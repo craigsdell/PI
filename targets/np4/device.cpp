@@ -16,7 +16,7 @@
 #include "device.h"
 #include "logger.h"
 #include "p4dev.h"
-#include "np4_intel_device_config.pb.h"
+#include "pi/np4/np4_intel_device_config.pb.h"
 
 namespace pi {
 namespace np4 {

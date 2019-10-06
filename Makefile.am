@@ -13,11 +13,11 @@ endif
 
 # examples need to come after generators!
 # proto depends on frontends_extra/cpp!
-SUBDIRS = third_party lib include src generators targets $(MAYBE_CLI) examples \
-bin tests frontends_extra $(MAYBE_PROTO)
+SUBDIRS = third_party lib include src generators $(MAYBE_PROTO) \
+targets $(MAYBE_CLI) examples bin tests frontends_extra
 
-DIST_SUBDIRS = third_party lib include src generators targets CLI examples \
-bin tests frontends_extra $(MAYBE_PROTO)
+DIST_SUBDIRS = third_party lib include src $(MAYBE_PROTO) generators \
+targets CLI examples bin tests frontends_extra
 
 AM_DISTCHECK_CONFIGURE_FLAGS = --with-bmv2 --with-np4 --with-fe-cpp
 

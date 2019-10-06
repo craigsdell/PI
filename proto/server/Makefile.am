@@ -9,7 +9,8 @@ if WITH_SYSREPO
 AM_CPPFLAGS += -DWITH_SYSREPO
 endif
 
-AM_CXXFLAGS = -Wall -Werror
+#AM_CXXFLAGS = -Wall -Werror -Wdeprecated-declarations
+AM_CXXFLAGS = -Wall -Werror -Wno-deprecated-declarations
 
 lib_LTLIBRARIES = libpigrpcserver.la
 

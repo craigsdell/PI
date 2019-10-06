@@ -25,7 +25,8 @@ $(abs_srcdir)/p4/config/v1/p4types.proto \
 $(abs_srcdir)/google/rpc/status.proto \
 $(abs_srcdir)/google/rpc/code.proto \
 $(abs_srcdir)/p4/tmp/p4config.proto \
-$(abs_srcdir)/gnmi/gnmi.proto
+$(abs_srcdir)/gnmi/gnmi.proto \
+$(abs_srcdir)/pi/np4/np4_intel_device_config.proto
 
 # Somehow, using an absolute path above prevents me from using EXTRA_DIST =
 # $(protos)
@@ -37,7 +38,8 @@ p4/config/v1/p4types.proto \
 google/rpc/status.proto \
 google/rpc/code.proto \
 p4/tmp/p4config.proto \
-gnmi/gnmi.proto
+gnmi/gnmi.proto \
+pi/np4/np4_intel_device_config.proto
 
 proto_cpp_files = \
 cpp_out/p4/v1/p4data.pb.cc \
@@ -55,7 +57,9 @@ cpp_out/google/rpc/code.pb.h \
 cpp_out/p4/tmp/p4config.pb.cc \
 cpp_out/p4/tmp/p4config.pb.h \
 cpp_out/gnmi/gnmi.pb.cc \
-cpp_out/gnmi/gnmi.pb.h
+cpp_out/gnmi/gnmi.pb.h \
+cpp_out/pi/np4/np4_intel_device_config.pb.cc \
+cpp_out/pi/np4/np4_intel_device_config.pb.h
 
 proto_grpc_files = \
 grpc_out/p4/v1/p4data.grpc.pb.cc \
@@ -73,7 +77,9 @@ grpc_out/google/rpc/code.grpc.pb.h \
 grpc_out/p4/tmp/p4config.grpc.pb.cc \
 grpc_out/p4/tmp/p4config.grpc.pb.h \
 grpc_out/gnmi/gnmi.grpc.pb.cc \
-grpc_out/gnmi/gnmi.grpc.pb.h
+grpc_out/gnmi/gnmi.grpc.pb.h \
+grpc_out/pi/np4/np4_intel_device_config.grpc.pb.cc \
+grpc_out/pi/np4/np4_intel_device_config.grpc.pb.h
 
 includep4dir = $(includedir)/p4/v1/
 nodist_includep4_HEADERS = \
@@ -105,6 +111,11 @@ includegnmidir = $(includedir)/gnmi/
 nodist_includegnmi_HEADERS = \
 cpp_out/gnmi/gnmi.pb.h \
 grpc_out/gnmi/gnmi.grpc.pb.h
+
+includenp4dir = $(includedir)/pi/np4/
+nodist_includenp4_HEADERS = \
+cpp_out/pi/np4/np4_intel_device_config.pb.h \
+grpc_out/pi/np4/np4_intel_device_config.grpc.pb.h
 
 AM_CPPFLAGS = -Icpp_out -Igrpc_out \
 -I$(top_srcdir)/../include \
@@ -167,6 +178,12 @@ py_out/gnmi/__init__.py \
 py_out/gnmi/gnmi_pb2.py \
 py_out/gnmi/gnmi_pb2_grpc.py
 
+np4pydir = $(pythondir)/gnmi
+nodist_np4py_PYTHON = \
+py_out/pi/np4/__init__.py \
+py_out/pi/np4/np4_intel_device_config_pb2.py \
+py_out/pi/np4/np4_intel_device_config_pb2_grpc.py
+
 BUILT_SOURCES += \
 $(nodist_p4py_PYTHON) \
 $(nodist_p4v1py_PYTHON) \
@@ -175,7 +192,8 @@ $(nodist_p4configv1py_PYTHON) \
 $(nodist_p4tmppy_PYTHON) \
 $(nodist_googlepy_PYTHON) \
 $(nodist_googlerpcpy_PYTHON) \
-$(nodist_gnmipy_PYTHON)
+$(nodist_gnmipy_PYTHON) \
+$(nodist_np4py_PYTHON)
 endif
 
 # See http://www.gnu.org/software/automake/manual/html_node/Multiple-Outputs.html
@@ -199,6 +217,7 @@ if HAVE_GRPC_PY_PLUGIN
 	@touch $(builddir)/py_out/p4/config/__init__.py $(builddir)/py_out/p4/config/v1/__init__.py
 	@touch $(builddir)/py_out/p4/tmp/__init__.py
 	@touch $(builddir)/py_out/google/__init__.py $(builddir)/py_out/google/rpc/__init__.py $(builddir)/py_out/gnmi/__init__.py
+	@touch $(builddir)/py_out/pi/__init__.py $(builddir)/py_out/pi/np4/__init__.py
 endif
 	@mv -f proto_files.tmp $@
 
