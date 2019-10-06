@@ -43,6 +43,13 @@ AC_ARG_WITH([bmv2],
 
 AM_CONDITIONAL([WITH_BMV2], [test "$want_bmv2" = yes])
 
+want_np4=no
+AC_ARG_WITH([np4],
+    AS_HELP_STRING([--with-np4], [Build for np4 target]),
+    [want_np4="$withval"], [])
+
+AM_CONDITIONAL([WITH_NP4], [test "$want_np4" = yes])
+
 want_fe_cpp=no
 AC_ARG_WITH([fe_cpp],
     AS_HELP_STRING([--with-fe-cpp], [Build with C++ frontend]),
@@ -213,6 +220,7 @@ AC_CONFIG_FILES([Makefile
                  third_party/unity/Makefile])
 
 AS_IF([test "$want_bmv2" = yes], [AC_CONFIG_SUBDIRS([targets/bmv2])])
+AS_IF([test "$want_np4" = yes], [AC_CONFIG_SUBDIRS([targets/np4])])
 AS_IF([test "$want_fe_cpp" = yes], [
   AC_CONFIG_SUBDIRS([frontends_extra/cpp])
 ])
@@ -236,6 +244,7 @@ AS_ECHO("Compile for bmv2 ............................. : $want_bmv2")
 AS_IF([test "$want_bmv2" = yes], [
 AS_ECHO("  simple_switch found ........................ : $simple_switch_found")
 ])
+AS_ECHO("Compile for np4 .............................. : $want_np4")
 AS_ECHO("Compile C++ frontend ......................... : $want_fe_cpp")
 AS_ECHO("Compile p4runtime.proto and associated fe .... : $with_proto")
 AS_ECHO("Compile internal RPC ......................... : $with_internal_rpc")

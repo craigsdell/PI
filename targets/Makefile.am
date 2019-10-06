@@ -8,6 +8,10 @@ if WITH_INTERNAL_RPC
 MAYBE_RPC = rpc
 endif
 
-SUBDIRS = dummy $(MAYBE_RPC) $(MAYBE_BMV2)
+if WITH_NP4
+MAYBE_NP4 = np4
+endif
 
-DIST_SUBDIRS = dummy rpc $(MAYBE_BMV2)
+SUBDIRS = dummy $(MAYBE_RPC) $(MAYBE_BMV2) $(MAYBE_NP4)
+
+DIST_SUBDIRS = dummy rpc $(MAYBE_BMV2) $(MAYBE_NP4)

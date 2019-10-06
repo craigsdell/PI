@@ -19,7 +19,7 @@ bin tests frontends_extra $(MAYBE_PROTO)
 DIST_SUBDIRS = third_party lib include src generators targets CLI examples \
 bin tests frontends_extra $(MAYBE_PROTO)
 
-AM_DISTCHECK_CONFIGURE_FLAGS = --with-bmv2 --with-fe-cpp
+AM_DISTCHECK_CONFIGURE_FLAGS = --with-bmv2 --with-np4 --with-fe-cpp
 
 # ensure the distribution of the doxygen configuration file
 EXTRA_DIST = $(top_srcdir)/docs/doxygen.cfg \

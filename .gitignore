@@ -55,6 +55,7 @@ tests/test-suite.log
 m4/
 .dirstamp
 py-compile
+confdefs.h
 
 *.tar.gz
 
