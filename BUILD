@@ -2,31 +2,33 @@ package(
     default_visibility = ["//visibility:public"],
 )
 
-filegroup(
+cc_library(
     name = "pihdrs",
-    srcs = glob(["include/**/*.h"]),
+    hdrs = glob(["include/**/*.h"]),
+    includes = ["include"],
     visibility = ["//:__subpackages__"],
 )
 
 cc_library(
     name = "piutils",
-    srcs = glob(["src/utils/*.c"]) + ["//:pihdrs"],
+    srcs = glob(["src/utils/*.c"]),
     hdrs = glob(["src/utils/*.h"]),
     includes = ["src/utils", "include"],
-    deps = [],
+    deps = ["//:pihdrs"],
     visibility = ["//:__subpackages__"],
 )
 
 
 cc_library(
     name = "pip4info",
-    srcs = ["src/p4info_int.h", ":pihdrs"]
+    srcs = ["src/p4info_int.h"]
         + glob(["src/p4info/*.c", "src/p4info/*.h"])
         + glob(["src/config_readers/*.c", "src/config_readers/*.h"]),
     hdrs = glob(["include/PI/p4info/*.h"]),
     includes = ["include", "src"],
     copts = ["-DPI_LOG_ON"],
-    deps = ["//third_party/cJSON:picjson",
+    deps = [":pihdrs",
+            "//third_party/cJSON:picjson",
             "//lib:pitoolkit",
             ":piutils",
             "@judy//:Judy1",
@@ -39,15 +41,15 @@ cc_library(
 # all files manually.
 cc_library(
     name = "pi",
-    srcs = [":pihdrs"]
-        + glob(["src/*.c"], exclude=[
+    srcs = glob(["src/*.c"], exclude=[
               "src/pi_notifications_pub.c", "src/pi_rpc_server.c"])
         + glob(["src/*.h"], exclude=[
               "src/p4info_int.h", "src/pi_notifications_pub.h"]),
     hdrs = glob(["include/PI/*.h", "include/PI/target/*.h"])
         + ["include/PI/int/pi_int.h", "include/PI/int/serialize.h"],
     includes = ["include"],
-    deps = [":pip4info",
+    deps = [":pihdrs",
+            ":pip4info",
             "@judy//:JudyL",
             "@judy//:JudySL"],
 )

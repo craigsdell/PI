@@ -96,7 +96,7 @@ class Tables {
     //
     static pi_status_t EntryDelete(pi_dev_id_t dev_id,
                                    pi_p4_id_t table_id,
-                                   pi_entry_handle_t entry_entry);
+                                   const size_t ruleIndex);
 
     // @brief Delete a table rule using a key
     //
@@ -144,7 +144,7 @@ class Tables {
     //
     static pi_status_t EntryFetch(pi_dev_id_t dev_id,
                                   pi_p4_id_t table_id,
-                                   pi_table_fetch_res_t *res);
+                                  pi_table_fetch_res_t *res);
 
     // Tables is neither copyable or movable
     Tables(const Tables&) = delete;

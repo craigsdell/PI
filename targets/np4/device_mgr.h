@@ -96,7 +96,7 @@ class DeviceMgr {
 
   private:
     // Private, need to use CreateInstance
-    DeviceMgr();
+    DeviceMgr() {};
 
     // Map of devices
     std::map<pi_dev_id_t, std::unique_ptr<Device>> devices;

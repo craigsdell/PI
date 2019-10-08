@@ -68,3 +68,6 @@ core
 
 # Bazel build directories
 bazel-*
+
+# Ignore swap files
+*.swp

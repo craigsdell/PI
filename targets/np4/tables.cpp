@@ -719,9 +719,9 @@ pi_status_t Tables::DefaultActionGet(pi_dev_id_t dev_id,
     return RetrieveEntry(info, action, table_entry);;
 }
 
-pi_status_t EntryDelete(pi_dev_id_t dev_id,
-                        pi_p4_id_t table_id,
-                        const size_t ruleIndex) {
+pi_status_t Tables::EntryDelete(pi_dev_id_t dev_id,
+                                pi_p4_id_t table_id,
+                                const size_t ruleIndex) {
 
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
@@ -769,9 +769,9 @@ pi_status_t EntryDelete(pi_dev_id_t dev_id,
     return PI_STATUS_SUCCESS;
 }
 
-pi_status_t EntryDeleteWKey(pi_dev_id_t dev_id,
-                            pi_p4_id_t table_id,
-                            const pi_match_key_t *match_key) {
+pi_status_t Tables::EntryDeleteWKey(pi_dev_id_t dev_id,
+                                    pi_p4_id_t table_id,
+                                    const pi_match_key_t *match_key) {
 
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
@@ -930,9 +930,9 @@ pi_status_t Tables::EntryModifyWKey(pi_dev_id_t dev_id,
     return EntryModify(dev_id, table_id, ruleIndex, table_entry);
 }
 
-pi_status_t EntryFetch(pi_dev_id_t dev_id,
-                       pi_p4_id_t table_id,
-                       pi_table_fetch_res_t *res) {
+pi_status_t Tables::EntryFetch(pi_dev_id_t dev_id,
+                               pi_p4_id_t table_id,
+                               pi_table_fetch_res_t *res) {
 
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
