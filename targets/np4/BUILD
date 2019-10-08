@@ -26,13 +26,12 @@ cc_library(
     ],
     hdrs = [
     ],
-    includes = ["."],
+    includes = [".", "../../proto", ],
     copts = ["-DUSE_ABSL=1"],
     deps = [
         "//:pi",
         "@com_github_p4lang_p4runtime//:p4runtime_cc_grpc",
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "//proto:np4_intel_device_config_cc_proto",
-        "@com_google_absl//absl/memory:memory",
     ],
 )
