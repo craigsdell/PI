@@ -19,3 +19,14 @@ cc_proto_library(
     name = "p4config_cc_proto",
     deps = [":p4config_proto"],
 )
+
+proto_library(
+    name = "np4_intel_device_config_proto",
+    srcs = ["pi/np4/np4_intel_device_config.proto"]
+)
+
+cc_proto_library(
+    name = "np4_intel_device_config_cc_proto",
+    deps = [":np4_intel_device_config_proto"],
+
+)

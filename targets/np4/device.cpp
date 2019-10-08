@@ -16,7 +16,8 @@
 #include "device.h"
 #include "logger.h"
 #include "p4dev.h"
-#include "pi/np4/np4_intel_device_config.pb.h"
+#include "proto/pi/np4/np4_intel_device_config.pb.h"
+#include "absl/memory/memory.h"
 
 namespace pi {
 namespace np4 {
@@ -38,7 +39,7 @@ std::unique_ptr<Device> Device::CreateInstance(
     pi_dev_id_t dev_id,
     const pi_p4info_t* p4_info) {
 
-    return std::make_unique<Device>(dev_id, p4_info);
+    return absl::make_unique<Device>(dev_id, p4_info);
 }
 
 pi_status_t Device::LoadDevice(std::string data, size_t size) {
@@ -59,14 +60,14 @@ pi_status_t Device::LoadDevice(std::string data, size_t size) {
         case ::pi::np4::NP4DeviceConfig::kPath: {
             // Allocate NP4 device in offline mode (i.e. device path)
             auto path = dev_config.np4_device().path();
-            p4_dev_ = std::make_unique<::np4::Device>(path);
+            p4_dev_ = absl::make_unique<::np4::Device>(path);
             break;
         }
 
         case ::pi::np4::NP4DeviceConfig::kDaemon: {
             // Allocate NP4 device in online mode (i.e. daemon)
             auto dc = dev_config.np4_device().daemon();
-            p4_dev_ = std::make_unique<::np4::Device>(dc.host(), dc.port());
+            p4_dev_ = absl::make_unique<::np4::Device>(dc.host(), dc.port());
             break;
         }
         

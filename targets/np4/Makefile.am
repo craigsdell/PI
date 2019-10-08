@@ -14,6 +14,7 @@ pi_tables_imp.cpp \
 pi_clone_imp.cpp \
 device_mgr.cpp \
 device.cpp \
+counter.cpp \
 tables.cpp
 
 libpi_np4_la_LIBADD = \
