@@ -29,8 +29,9 @@ extern "C" {
 
 pi_status_t _pi_init(int *abi_version, void *extra) {
 
-  (void)abi_version;
   (void) extra;
+
+  *abi_version = PI_ABI_VERSION;
 
   return pi::np4::DeviceMgr::Init();
 }
