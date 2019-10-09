@@ -77,13 +77,14 @@ pi_status_t DeviceMgr::AssignDevice(pi_dev_id_t dev_id,
     // Check to make sure Device Manager initialised
     if (np4_device_mgr_ == nullptr) {
         Logger::error("DeviceMgr not initialised");
-        return PI_STATUS_DEV_NOT_ASSIGNED;
+        return PI_STATUS_ALLOC_ERROR;
     }
 
-    // Check to make sure this device id is allocated
+    // Check to make sure this device id is not allocated
     auto dev =  np4_device_mgr_->GetDevice(dev_id);
-    if (dev == nullptr) {
-        return PI_STATUS_DEV_NOT_ASSIGNED;
+    if (dev != nullptr) {
+        Logger::error("Dev "+std::to_string(dev_id)+" already allocated");
+        return PI_STATUS_DEV_ALREADY_ASSIGNED;
     }
 
     // Allocate NP4 device in online mode (i.e. Atom Daemon)
@@ -156,6 +157,7 @@ pi_status_t DeviceMgr::RemoveDevice(pi_dev_id_t dev_id) {
     // Check to make sure this device id is allocated
     auto dev =  np4_device_mgr_->GetDevice(dev_id);
     if (dev == nullptr) {
+        Logger::error("Dev "+std::to_string(dev_id)+" not allocated");
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
