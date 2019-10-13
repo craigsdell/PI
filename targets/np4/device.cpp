@@ -15,9 +15,11 @@
 
 #include <memory>
 #include "device.h"
-#include "logger.h"
+#include "proto/frontend/src/logger.h"
 #include "p4dev.h"
 #include "pi/np4/np4_intel_device_config.pb.h"
+
+using pi::fe::proto::Logger;
 
 namespace pi {
 namespace np4 {
@@ -49,8 +51,7 @@ pi_status_t Device::LoadDevice(std::string data, size_t size) {
     // Load NP4 Intel device config protobuf
     auto dev_config = ::pi::np4::NP4IntelDeviceConfig();
     if (!dev_config.ParseFromString(data)) {
-        Logger::error("Dev " + std::to_string(dev_id_)
-                        + ": invalid device config");
+        Logger::get()->error("Dev {}: invalid device config", dev_id_);
         return PI_STATUS_TARGET_ERROR;
     }
 
@@ -73,14 +74,14 @@ pi_status_t Device::LoadDevice(std::string data, size_t size) {
         }
         
         default:
-            Logger::error("Dev " + std::to_string(dev_id_)
-                + ": NP4 Device config not supported");
+            Logger::get()
+               ->error("Dev {}: NP4 Device config not supported", dev_id_);
             return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_ALLOCATE_ERROR);
         }
 
     } catch (::np4::Exception &e) {
-        Logger::error("Dev " + std::to_string(dev_id_) 
-            + ": NP4 Device allocate failed: " + e.what());
+        Logger::get()
+          ->error("Dev {}: NP4 Device allocate failed: {}", dev_id_, e.what());
         return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_ALLOCATE_ERROR);
     }
 

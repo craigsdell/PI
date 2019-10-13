@@ -13,10 +13,14 @@
  * limitations under the License.
  */
 
+#include <iostream>
 #include "p4dev.h"
 #include "device_mgr.h"
 #include "device.h"
-#include "logger.h"
+//#include "logger.h"
+#include "proto/frontend/src/logger.h"
+
+using pi::fe::proto::Logger;
 
 namespace pi {
 namespace np4 {
@@ -26,7 +30,7 @@ DeviceMgr* np4_device_mgr_ = nullptr;
 pi_status_t DeviceMgr::Init() {
 
     if (np4_device_mgr_ != nullptr) {
-        Logger::error("DeviceMgr has already been initialised");
+        Logger::get()->error("DeviceMgr has already been initialised");
         return PI_STATUS_ALLOC_ERROR;
     }
     np4_device_mgr_ = new DeviceMgr();
@@ -48,7 +52,7 @@ pi_dev_id_t DeviceMgr::GetDeviceCount() {
 
     // Check to make sure Device Manager initialised
     if (np4_device_mgr_ == nullptr) {
-        Logger::error("DeviceMgr not initialised");
+        Logger::get()->error("DeviceMgr not initialised");
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
@@ -59,7 +63,7 @@ Device* DeviceMgr::GetDevice(pi_dev_id_t dev_id) {
 
     // Check to make sure Device Manager initialised
     if (np4_device_mgr_ == nullptr) {
-        Logger::error("DeviceMgr not initialised");
+        Logger::get()->error("DeviceMgr not initialised");
         return nullptr;
     }
 
@@ -76,14 +80,14 @@ pi_status_t DeviceMgr::AssignDevice(pi_dev_id_t dev_id,
 
     // Check to make sure Device Manager initialised
     if (np4_device_mgr_ == nullptr) {
-        Logger::error("DeviceMgr not initialised");
+        Logger::get()->error("DeviceMgr not initialised");
         return PI_STATUS_ALLOC_ERROR;
     }
 
     // Check to make sure this device id is not allocated
     auto dev =  np4_device_mgr_->GetDevice(dev_id);
     if (dev != nullptr) {
-        Logger::error("Dev "+std::to_string(dev_id)+" already allocated");
+        Logger::get()->error("Dev {} already allocated", dev_id);
         return PI_STATUS_DEV_ALREADY_ASSIGNED;
     }
 
@@ -104,7 +108,7 @@ pi_status_t DeviceMgr::UpdateDeviceStart(pi_dev_id_t dev_id,
 
     // Check to make sure Device Manager initialised
     if (np4_device_mgr_ == nullptr) {
-        Logger::error("DeviceMgr not initialised");
+        Logger::get()->error("DeviceMgr not initialised");
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
@@ -125,7 +129,7 @@ pi_status_t DeviceMgr::UpdateDeviceEnd(pi_dev_id_t dev_id) {
 
     // Check to make sure Device Manager initialised
     if (np4_device_mgr_ == nullptr) {
-        Logger::error("DeviceMgr not initialised");
+        Logger::get()->error("DeviceMgr not initialised");
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
@@ -150,14 +154,14 @@ pi_status_t DeviceMgr::RemoveDevice(pi_dev_id_t dev_id) {
 
     // Check to make sure Device Manager initialised
     if (np4_device_mgr_ == nullptr) {
-        Logger::error("DeviceMgr not initialised");
+        Logger::get()->error("DeviceMgr not initialised");
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Check to make sure this device id is allocated
     auto dev =  np4_device_mgr_->GetDevice(dev_id);
     if (dev == nullptr) {
-        Logger::error("Dev "+std::to_string(dev_id)+" not allocated");
+        Logger::get()->error("Dev {} not allocated", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 

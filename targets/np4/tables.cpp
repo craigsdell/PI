@@ -17,8 +17,10 @@
 
 #include "p4dev.h"
 #include "tables.h"
-#include "logger.h"
+#include "proto/frontend/src/logger.h"
 #include "device_mgr.h"
+
+using pi::fe::proto::Logger;
 
 namespace pi {
 namespace np4 {
@@ -51,8 +53,8 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
 
 		switch (fieldInfo->match_type) {
 		case PI_P4INFO_MATCH_TYPE_VALID:
-            Logger::error("error VALID match type not implemented "
-                          + std::string(keyName));
+            Logger::get()->error("error VALID match type not implemented: {}",
+                               keyName);
             return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_NOT_IMPLEMENTED);
 			break;
 
@@ -66,11 +68,11 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
             try {
                 // Create new key
                 key.push_back(new ::np4::KeyElemExact(keyName, keyValue));
-                Logger::debug("adding Exact key " + std::string(keyName));
+                Logger::get()->debug("adding Exact key {}", keyName);
 
             } catch (::np4::Exception &e) {
-                Logger::error("error creating exact key "
-                                + std::string(keyName) + ": " +  e.what());
+                Logger::get()->error(
+                    "error creating exact key {}: {}", keyName, e.what());
                 return pi_status_t(PI_STATUS_TARGET_ERROR + 
                                    P4DEV_KEY_NAME_ERROR);
             }
@@ -93,11 +95,11 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
                 // Create new key
                 key.push_back(new ::np4::KeyElemLPM(keyName, keyValue,
                                                        prefixLen));
-                Logger::debug("adding LPM key " + std::string(keyName));
+                Logger::get()->debug("adding LPM key {}", keyName);
 
             } catch (::np4::Exception &e) {
-                Logger::error("error creating lpm key "
-                                + std::string(keyName) + ": " + e.what()); 
+                Logger::get()->error("error creating lpm key {}: {}",
+                                     keyName, e.what());
                 return pi_status_t(PI_STATUS_TARGET_ERROR + 
                                    P4DEV_KEY_NAME_ERROR);
             }
@@ -123,11 +125,11 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
                 key.push_back(new ::np4::KeyElemTernary(keyName, keyValue, 
                                                            keyMask));
 			    //*requires_priority = true;
-                Logger::debug("adding Ternary key " + std::string(keyName));
+                Logger::get()->debug("adding Ternary key {}", keyName);
 
             } catch (::np4::Exception &e) {
-                Logger::error("error creating ternary key "
-                                + std::string(keyName) + ": " + e.what());
+                Logger::get()->error(
+                    "error creating ternary key {}: {}", keyName, e.what());
                 return pi_status_t(PI_STATUS_TARGET_ERROR + 
                                    P4DEV_KEY_NAME_ERROR);
             }
@@ -135,14 +137,13 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
         }
 
 		case PI_P4INFO_MATCH_TYPE_RANGE:
-            Logger::error("error range key not implemented "
-                          + std::string(keyName));
+            Logger::get()->error(
+                "error range key not implemented {}", keyName);
             return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_NOT_IMPLEMENTED);
 			break;
 
 		default:
-            Logger::error("error match type not supported "
-                          + std::string(keyName));
+            Logger::get()->error("error match type not supported {}", keyName);
             return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_NOT_IMPLEMENTED);
 		}
 	}
@@ -168,8 +169,7 @@ pi_status_t AddAction(const pi_p4info_t *info,
 	const char *actionData = action_data->data;
 	const char *actionName = pi_p4info_action_name_from_id(info, actionID);
     if (actionName == nullptr) {
-        Logger::error("can't find action name from id "
-                      + std::to_string(actionID));
+        Logger::get()->error("can't find action name from id {}", actionID);
         return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_ACTION_NAME_ERROR);
     }
 
@@ -189,8 +189,8 @@ pi_status_t AddAction(const pi_p4info_t *info,
 		const char *paramName = 
             pi_p4info_action_param_name_from_id(info, actionID, paramIds[i]);
         if (paramName == nullptr) {
-            Logger::error("Can't find param name for id "
-                              + std::to_string(paramIds[i]));
+            Logger::get()->error("Can't find param name for id {}",
+                                 paramIds[i]);
             return pi_status_t(PI_STATUS_TARGET_ERROR + 
                                P4DEV_PARAMETER_NAME_ERROR);
         }
@@ -210,8 +210,8 @@ pi_status_t AddAction(const pi_p4info_t *info,
         action = ::np4::Action(actionName, params);
 
     } catch (::np4::Exception &e) {
-        Logger::error("error adding action " + std::string(actionName)
-                        + ": " + e.what());
+        Logger::get()->error(
+            "error adding action {}: {}", actionName, e.what());
         return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_ACTION_NAME_ERROR);
     }
 
@@ -342,9 +342,9 @@ size_t CalcRuleDataSize(const pi_p4info_t *info,
 
         // Table is sparsely populated so should be ok
         } catch (::np4::Exception &e) {
-            Logger::debug("table id " + std::to_string(table_id)
-                            + ": rule fetch failed on index "
-                            + std::to_string(ruleIndex) + ": %s" + e.what());
+            Logger::get()->debug(
+                "table id {}: rule fetch failed on index {}: {}",
+                    table_id, ruleIndex, e.what());
         }
 
         dataSize += actionMap.at(rule.action.name).size;
@@ -353,9 +353,9 @@ size_t CalcRuleDataSize(const pi_p4info_t *info,
 
         // increment rule index and check we don't go over capacity
         if (++ruleIndex == maxRuleIndex) {
-            Logger::error("Table Id " + std::to_string(table_id) 
-                            + ": fetch rules has only found "
-                            + std::to_string(i) + " rules");
+            Logger::get()->error(
+                "Table Id {}: fetch rules has only found {} rules",
+                    table_id, i);
             break;
         }
     }
@@ -469,8 +469,8 @@ char *CopyRuleData(const pi_p4info_t *info,
             }
 
             default:
-                Logger::error("Key type " + std::to_string(keyElem->type)
-                                + " not handled");
+                Logger::get()->error("Key type {} not handled",
+                                     std::to_string(keyElem->type));
 			}
 		}
 
@@ -505,14 +505,14 @@ pi_status_t Tables::EntryAdd(pi_dev_id_t dev_id, pi_p4_id_t table_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
+        Logger::get()->error("Dev {}: not allocated", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Make sure we have P4 info
     auto info = dev->GetP4Info();
     if (info == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": no P4 Info");
+        Logger::get()->error("Dev {}: no P4 Info", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
@@ -530,9 +530,8 @@ pi_status_t Tables::EntryAdd(pi_dev_id_t dev_id, pi_p4_id_t table_id,
     // Retrieve table name
     const char* tableName = pi_p4info_table_name_from_id(info, table_id);
     if (tableName == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id)
-                        + ": table id " + std::to_string(table_id)
-                        + " not found in P4 Info");
+        Logger::get()->error("Dev {}: table id {} not found in P4 Info",
+                             dev_id, table_id);
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -544,7 +543,11 @@ pi_status_t Tables::EntryAdd(pi_dev_id_t dev_id, pi_p4_id_t table_id,
 
         // Do we write to all ATOMs
         if (dev->syncAtoms()) {
+            Logger::get()->debug("insert table {}: sync {} atoms",
+                                 tableName,
+                                 dev->GetP4Device()->getAtomCount());
             for (size_t i=0; i < dev->GetP4Device()->getAtomCount(); i++) {
+                Logger::get()->debug("insert for atom {}", i);
                 ::np4::Table& table = dev->GetP4Atom(i).getTable(tableName);
                 auto idx = table.insertRule(rule);
                 if (i == 0) {
@@ -552,20 +555,21 @@ pi_status_t Tables::EntryAdd(pi_dev_id_t dev_id, pi_p4_id_t table_id,
                 } else {
                     // If we're out of sync we'll just report it for now
                     if (idx != ruleIndex) {
-                        Logger::error("ATOM rule indexes out of sync");
+                        Logger::get()->error("ATOM rule indexes out of sync");
                     }
                 }
             }
 
         // Or just one ATOM
         } else {
+            Logger::get()->debug("insert table {}:", tableName);
             ::np4::Table& table = dev->GetP4Atom().getTable(tableName);
             ruleIndex = table.insertRule(rule);
         }
 
     } catch (::np4::Exception &e) {
-        Logger::error("Dev " + std::to_string(dev_id)
-                        + ": insert rule failed: " + e.what());
+        Logger::get()->error("Dev {}: insert rule failed: ",
+                             dev_id, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -581,14 +585,14 @@ pi_status_t Tables::DefaultActionSet(pi_dev_id_t dev_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
+        Logger::get()->error("Dev {}: not allocated", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Make sure we have P4 info
     auto info = dev->GetP4Info();
     if (info == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": no P4 Info");
+        Logger::get()->error("Dev {}: no P4 Info", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
@@ -605,9 +609,8 @@ pi_status_t Tables::DefaultActionSet(pi_dev_id_t dev_id,
     // Retrieve table name
     const char* tableName = pi_p4info_table_name_from_id(info, table_id);
     if (tableName == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) 
-                        + ": table id " + std::to_string(table_id)
-                        + " not found in P4 Info");
+        Logger::get()->error("Dev {}: table id {} not found in P4 Info",
+                             dev_id, table_id);
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -628,8 +631,8 @@ pi_status_t Tables::DefaultActionSet(pi_dev_id_t dev_id,
         }
 
     } catch (::np4::Exception &e) {
-        Logger::error("Dev " + std::to_string(dev_id)
-                        + ": set default action failed: " + e.what());
+        Logger::get()->error("Dev {}: set default action failed: ",
+                             dev_id, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -642,22 +645,22 @@ pi_status_t Tables::DefaultActionReset(pi_dev_id_t dev_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
+        Logger::get()->error("Dev {}: not allocated", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Make sure we have P4 info
     auto info = dev->GetP4Info();
     if (info == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": no P4 Info");
+        Logger::get()->error("Dev {}: no P4 Info", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Retrieve table name
     const char* tableName = pi_p4info_table_name_from_id(info, table_id);
     if (tableName == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": table id "
-                        + std::to_string(table_id) + " not found in P4 Info"); 
+        Logger::get()->error("Dev {}: table id {} not found in P4 Info",
+                             dev_id, table_id); 
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -678,8 +681,8 @@ pi_status_t Tables::DefaultActionReset(pi_dev_id_t dev_id,
         }
 
     } catch (::np4::Exception &e) {
-        Logger::error("Dev " + std::to_string(dev_id)
-                        + ": clear default action failed: " + e.what());
+        Logger::get()->error("Dev {}: clear default action failed: ",
+                             dev_id, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -693,22 +696,22 @@ pi_status_t Tables::DefaultActionGet(pi_dev_id_t dev_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
+        Logger::get()->error("Dev {}: not allocated", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Make sure we have P4 info
     auto info = dev->GetP4Info();
     if (info == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": no P4 Info");
+        Logger::get()->error("Dev {}: no P4 Info", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Retrieve table name
     const char* tableName = pi_p4info_table_name_from_id(info, table_id);
     if (tableName == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": table id "
-                        + std::to_string(table_id) + " not found in P4 Info"); 
+        Logger::get()->error("Dev {}: table id {} not found in P4 Info",
+                             dev_id, table_id); 
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -723,8 +726,8 @@ pi_status_t Tables::DefaultActionGet(pi_dev_id_t dev_id,
         action = table.getDefaultAction();
 
     } catch (::np4::Exception &e) {
-        Logger::error("Dev " + std::to_string(dev_id)
-                        + ": get default action failed: " +  e.what());
+        Logger::get()->error("Dev {}: get default action failed: ",
+                             dev_id, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -738,23 +741,22 @@ pi_status_t Tables::DefaultActionGetHandle(pi_dev_id_t dev_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
+        Logger::get()->error("Dev {}: not allocated", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Make sure we have P4 info
     auto info = dev->GetP4Info();
     if (info == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": no P4 Info");
+        Logger::get()->error("Dev {}: no P4 Info", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Retrieve table name
     const char* tableName = pi_p4info_table_name_from_id(info, table_id);
     if (tableName == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id)
-                        + ": table id " + std::to_string(table_id)
-                        + " not found in P4 Info");
+        Logger::get()->error("Dev {}: table id not found in P4 Info",
+                             dev_id, table_id);
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -766,8 +768,8 @@ pi_status_t Tables::DefaultActionGetHandle(pi_dev_id_t dev_id,
         ruleIndex = table.getCapacity();
 
     } catch (::np4::Exception &e) {
-        Logger::error("Dev " + std::to_string(dev_id)
-                        + ": get capacity failed: " + e.what());
+        Logger::get()->error("Dev {}: get capacity failed: ",
+                             dev_id, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -783,22 +785,22 @@ pi_status_t Tables::EntryDelete(pi_dev_id_t dev_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
+        Logger::get()->error("Dev {}: not allocated", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Make sure we have P4 info
     auto info = dev->GetP4Info();
     if (info == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": no P4 Info");
+        Logger::get()->error("Dev {}: no P4 Info", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Retrieve table name
     const char* tableName = pi_p4info_table_name_from_id(info, table_id);
     if (tableName == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": table id "
-                      + std::to_string(table_id) + " not found in P4 Info"); 
+        Logger::get()->error("Dev {}: table id {} not found in P4 Info",
+                             dev_id, table_id); 
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -819,8 +821,8 @@ pi_status_t Tables::EntryDelete(pi_dev_id_t dev_id,
         }
 
     } catch (::np4::Exception &e) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": delete rule "
-                     + std::to_string(ruleIndex) + " failed: " + e.what());
+        Logger::get()->error("Dev {}: delete rule {} failed: ",
+                             dev_id, ruleIndex, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -834,22 +836,22 @@ pi_status_t Tables::EntryDeleteWKey(pi_dev_id_t dev_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
+        Logger::get()->error("Dev {}: not allocated", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Make sure we have P4 info
     auto info = dev->GetP4Info();
     if (info == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": no P4 Info");
+        Logger::get()->error("Dev {}: no P4 Info", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Retrieve table name
     const char* tableName = pi_p4info_table_name_from_id(info, table_id);
     if (tableName == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": table id "
-                      + std::to_string(table_id) + " not found in P4 Info");
+        Logger::get()->error("Dev {}: table id {} not found in P4 Info",
+                             dev_id, table_id);
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -869,8 +871,7 @@ pi_status_t Tables::EntryDeleteWKey(pi_dev_id_t dev_id,
 
     // Couldn't find entry
     } catch (::np4::Exception &e) {
-        Logger::error("Dev " + std::to_string(dev_id)
-                        + ": can't find rule: " + e.what());
+        Logger::get()->error("Dev {}: can't find rule: {}", dev_id, e.what());
         return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_KEY_NAME_ERROR);
     }
 
@@ -886,14 +887,14 @@ pi_status_t Tables::EntryModify(pi_dev_id_t dev_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
+        Logger::get()->error("Dev {}: not allocated", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Make sure we have P4 info
     auto info = dev->GetP4Info();
     if (info == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": no P4 Info");
+        Logger::get()->error("Dev {}: no P4 Info", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
@@ -910,8 +911,8 @@ pi_status_t Tables::EntryModify(pi_dev_id_t dev_id,
     // Retrieve table name
     const char* tableName = pi_p4info_table_name_from_id(info, table_id);
     if (tableName == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": table id "
-                        + std::to_string(table_id) + " not found in P4 Info");
+        Logger::get()->error("Dev {}: table id {} not found in P4 Info",
+                              dev_id, table_id);
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -932,8 +933,8 @@ pi_status_t Tables::EntryModify(pi_dev_id_t dev_id,
         }
 
     } catch (::np4::Exception &e) {
-        Logger::error("Dev " + std::to_string(dev_id)
-                        + ": modify rule failed: " + e.what());
+        Logger::get()->error("Dev {}: modify rule failed: {}",
+                             dev_id, e.what());
         return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_ERROR);
     }
 
@@ -948,22 +949,22 @@ pi_status_t Tables::EntryModifyWKey(pi_dev_id_t dev_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
+        Logger::get()->error("Dev {}: not allocated", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Make sure we have P4 info
     auto info = dev->GetP4Info();
     if (info == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": no P4 Info");
+        Logger::get()->error("Dev {}: no P4 Info", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Retrieve table name
     const char* tableName = pi_p4info_table_name_from_id(info, table_id);
     if (tableName == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": table id "
-                      + std::to_string(table_id) + " not found in P4 Info");
+        Logger::get()->error("Dev {}: table id {} not found in P4 Info",
+                             dev_id, table_id);
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -983,8 +984,8 @@ pi_status_t Tables::EntryModifyWKey(pi_dev_id_t dev_id,
 
     // Couldn't find entry
     } catch (::np4::Exception &e) {
-        Logger::error("Dev " + std::to_string(dev_id)
-                        + ": can't find rule: " + e.what());
+        Logger::get()->error("Dev {}: can't find rule: {}",
+                             dev_id, e.what());
         return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_KEY_NAME_ERROR);
     }
 
@@ -998,22 +999,22 @@ pi_status_t Tables::EntryFetch(pi_dev_id_t dev_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
+        Logger::get()->error("Dev {}: not allocated", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Make sure we have P4 info
     auto info = dev->GetP4Info();
     if (info == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": no P4 Info");
+        Logger::get()->error("Dev {}: no P4 Info", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Retrieve table name
     const char* tableName = pi_p4info_table_name_from_id(info, table_id);
     if (tableName == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": table id "
-                        + std::to_string(table_id) + " not found in P4 Info"); 
+        Logger::get()->error("Dev {}: table id {} not found in P4 Info",
+                             dev_id, table_id); 
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -1027,8 +1028,8 @@ pi_status_t Tables::EntryFetch(pi_dev_id_t dev_id,
 
     // Couldn't find entry
     } catch (::np4::Exception &e) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": can't get table "
-                        + tableName + ": "  + e.what());
+        Logger::get()->error("Dev {}: can't get table {}: {}",
+                             dev_id, tableName, e.what());
         return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_KEY_NAME_ERROR);
     }
 
@@ -1058,9 +1059,8 @@ pi_status_t Tables::EntryFetch(pi_dev_id_t dev_id,
 
         // Table is sparsely populated so should be ok
         } catch (::np4::Exception &e) {
-            Logger::debug("Dev " + std::to_string(dev_id)
-                            + ": rule fetch failed on index "
-                            + std::to_string(ruleIndex) + "%d: " + e.what());
+            Logger::get()->error("Dev {}: rule fetch failed on index {}: {}",
+                                 dev_id, ruleIndex, e.what());
         }
 
         // Copy in the rule data

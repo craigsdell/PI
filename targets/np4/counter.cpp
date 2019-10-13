@@ -14,8 +14,10 @@
  */
 
 #include "counter.h"
-#include "logger.h"
+#include "proto/frontend/src/logger.h"
 #include "device_mgr.h"
+
+using pi::fe::proto::Logger;
 
 namespace pi {
 namespace np4 {
@@ -76,15 +78,15 @@ pi_status_t Counter::Read(pi_dev_id_t dev_id,
     // Make sure we have P4 info
     auto info = dev->GetP4Info();
     if (info == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": no P4 Info");
+        Logger::get()->error("Dev {}: no P4 Info", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
     // Find counter name
 	const char *counterName = pi_p4info_counter_name_from_id(info, counter_id);
     if (counterName == nullptr) {
-        Logger::error("Dev " + std::to_string(dev_id) + ": counter id "
-                      + std::to_string(counter_id) + " not found in P4 Info");
+        Logger::get()->error("Dev {}: counter id {} not found in P4 Info",
+                             dev_id, counter_id);
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -111,8 +113,8 @@ pi_status_t Counter::Read(pi_dev_id_t dev_id,
         }
 
     } catch (::np4::Exception &e) {
-        Logger::error("Dev "+std::to_string(dev_id)
-                     +": read counter failed: " + e.what());
+        Logger::get()->error("Dev {}: read counter failed: {}",
+                             dev_id, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 

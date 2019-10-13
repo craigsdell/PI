@@ -1,4 +1,5 @@
 /* Copyright 2013-present Barefoot Networks, Inc.
+ * Copyright 2019-present Dell EMC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +16,7 @@
 
 /*
  * Jakub Neruda (xnerud01@stud.fit.vutbr.cz)
+ * Craig Stevens (Dell EMC)
  *
  */
 
@@ -24,8 +26,9 @@
 #include <PI/pi.h>
 #include <cstring>
 #include "tables.h"
-#include "logger.h"
+#include "proto/frontend/src/logger.h"
 
+using pi::fe::proto::Logger;
 
 extern "C" {
 
@@ -41,7 +44,7 @@ pi_status_t _pi_table_entry_add(pi_session_handle_t session_handle,
 
 	(void)(session_handle); ///< No support for sessions
 
-	Logger::debug("PI_table_entry_add");
+	Logger::get()->trace("PI_table_entry_add");
 	
     return pi::np4::Tables::EntryAdd(dev_tgt.dev_id, table_id, match_key,
                                      table_entry, overwrite, entry_handle);
@@ -55,7 +58,7 @@ pi_status_t _pi_table_default_action_set(pi_session_handle_t session_handle,
                                          const pi_table_entry_t *table_entry) {
 
 	(void)(session_handle);
-	Logger::debug("PI_table_default_action_set");
+	Logger::get()->trace("PI_table_default_action_set");
 	
     return pi::np4::Tables::DefaultActionSet(dev_tgt.dev_id, table_id,
                                              table_entry);
@@ -69,7 +72,7 @@ pi_status_t _pi_table_default_action_reset(pi_session_handle_t session_handle,
                                            pi_p4_id_t table_id) {
 
 	(void)(session_handle);
-	Logger::debug("PI_table_default_action_reset");
+	Logger::get()->trace("PI_table_default_action_reset");
 
     return pi::np4::Tables::DefaultActionReset(dev_tgt.dev_id, table_id);
 }
@@ -81,7 +84,7 @@ pi_status_t _pi_table_default_action_get(pi_session_handle_t session_handle,
                                          pi_table_entry_t *table_entry) {
 
 	(void)(session_handle);
-	Logger::debug("PI_table_default_action_get");
+	Logger::get()->trace("PI_table_default_action_get");
 
 	return pi::np4::Tables::DefaultActionGet(dev_tgt.dev_id, table_id,
                                              table_entry);
@@ -93,7 +96,7 @@ pi_status_t _pi_table_default_action_done(pi_session_handle_t session_handle,
                                           pi_table_entry_t *table_entry) {
 
 	(void)(session_handle);
-	Logger::debug("PI_table_default_action_done");
+	Logger::get()->trace("PI_table_default_action_done");
 
 	if (table_entry->entry_type == PI_ACTION_ENTRY_TYPE_DATA) {
 		pi_action_data_t *action_data = table_entry->entry.action_data;
@@ -111,7 +114,7 @@ pi_status_t _pi_table_default_action_get_handle(
 
     (void)session_handle;
 
-	Logger::debug("PI_table_default_get_handle");
+	Logger::get()->trace("PI_table_default_get_handle");
 	
     return pi::np4::Tables::DefaultActionGetHandle(dev_tgt.dev_id,
         table_id, entry_handle);
@@ -124,7 +127,7 @@ pi_status_t _pi_table_entry_delete(pi_session_handle_t session_handle,
                                    pi_p4_id_t table_id,
                                    pi_entry_handle_t entry_handle) {
 	(void)(session_handle);
-	Logger::debug("PI_table_entry_delete");
+	Logger::get()->trace("PI_table_entry_delete");
 
     const std::size_t ruleIndex(entry_handle);
     return pi::np4::Tables::EntryDelete(dev_id, table_id, ruleIndex);
@@ -138,7 +141,7 @@ pi_status_t _pi_table_entry_delete_wkey(pi_session_handle_t session_handle,
                                         const pi_match_key_t *match_key) {
 
 	(void)(session_handle);
-	Logger::debug("PI_table_entry_delete_wkey");
+	Logger::get()->trace("PI_table_entry_delete_wkey");
 
     return pi::np4::Tables::EntryDeleteWKey(dev_tgt.dev_id, table_id,
                                             match_key);
@@ -153,7 +156,7 @@ pi_status_t _pi_table_entry_modify(pi_session_handle_t session_handle,
                                    const pi_table_entry_t *table_entry) {
 
 	(void)(session_handle);
-	Logger::debug("PI_table_entry_modify");
+	Logger::get()->trace("PI_table_entry_modify");
 
     const std::size_t ruleIndex(entry_handle);
     return pi::np4::Tables::EntryModify(dev_id, table_id, ruleIndex,
@@ -169,7 +172,7 @@ pi_status_t _pi_table_entry_modify_wkey(pi_session_handle_t session_handle,
                                         const pi_table_entry_t *table_entry) {
 
 	(void)(session_handle);
-	Logger::debug("PI_table_entry_modify_wkey");
+	Logger::get()->trace("PI_table_entry_modify_wkey");
 
     return pi::np4::Tables::EntryModifyWKey(dev_tgt.dev_id, table_id,
                                             match_key, table_entry);
@@ -182,7 +185,7 @@ pi_status_t _pi_table_entries_fetch(pi_session_handle_t session_handle,
                                     pi_table_fetch_res_t *res) {
 
 	(void)(session_handle);
-	Logger::debug("PI_table_entries_fetch");
+	Logger::get()->trace("PI_table_entries_fetch");
 
     return pi::np4::Tables::EntryFetch(dev_tgt.dev_id, table_id, res);
 }
@@ -221,7 +224,7 @@ pi_status_t _pi_table_entries_fetch_done(pi_session_handle_t session_handle,
                                          pi_table_fetch_res_t *res) {
 
 	(void)(session_handle);
-	Logger::debug("PI_table_entries_fetch_done");
+	Logger::get()->trace("PI_table_entries_fetch_done");
 	
 	delete[] res->entries;
 

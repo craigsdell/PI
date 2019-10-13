@@ -22,7 +22,6 @@ cc_library(
         "counter.h",
         "device.h",
         "device_mgr.h",
-        "logger.h",
         "tables.h",
     ],
     includes = [".", ],
@@ -32,6 +31,7 @@ cc_library(
         "@com_github_p4lang_p4runtime//:p4runtime_cc_grpc",
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "//proto:np4_intel_device_config_cc_proto",
+        "//proto/frontend:pifeproto_logger",
         "//proto:piprotoutil",
     ],
 )

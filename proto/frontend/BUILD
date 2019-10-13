@@ -3,6 +3,16 @@ package(
 )
 
 cc_library(
+    name = "pifeproto_logger",
+    hdrs = ["PI/frontends/proto/logging.h",
+            "src/logger.h"],
+    includes = ["."],
+    deps = [
+            "//proto/third_party:fmt",
+    ],
+)
+
+cc_library(
     name = "pifeproto",
     srcs = glob(["src/*.cpp", "src/*.h"]),
     hdrs = ["PI/frontends/proto/device_mgr.h",
