@@ -30,9 +30,13 @@ Device::Device(pi_dev_id_t dev_id,
     atom_id_(0),
     sync_atoms_(true),
     p4_info_(p4_info) {
+
+    Logger::get()->trace("Dev {}: Device created", dev_id_);
 }
 
 Device::~Device() {
+    Logger::get()->trace("Dev {}: Device deleted", dev_id_);
+
     // Stop the device
     Stop();
 }
@@ -40,6 +44,8 @@ Device::~Device() {
 std::unique_ptr<Device> Device::CreateInstance(
     pi_dev_id_t dev_id,
     const pi_p4info_t* p4_info) {
+
+    Logger::get()->trace("Dev {}: Device CreateInstance", dev_id);
 
     return std::unique_ptr<Device>(new Device(dev_id, p4_info));
 }
@@ -61,6 +67,7 @@ pi_status_t Device::LoadDevice(std::string data, size_t size) {
         case ::pi::np4::NP4DeviceConfig::kPath: {
             // Allocate NP4 device in offline mode (i.e. device path)
             auto path = dev_config.np4_device().path();
+            Logger::get()->debug("Dev {}: connecting to {}", dev_id_, path);
             p4_dev_ = std::unique_ptr<::np4::Device>(new ::np4::Device(path));
             break;
         }
@@ -68,14 +75,15 @@ pi_status_t Device::LoadDevice(std::string data, size_t size) {
         case ::pi::np4::NP4DeviceConfig::kDaemon: {
             // Allocate NP4 device in online mode (i.e. daemon)
             auto dc = dev_config.np4_device().daemon();
+            Logger::get()->debug("Dev {}: connecting to {}:{}",
+                                 dev_id_, dc.host(), dc.port());
             p4_dev_ = std::unique_ptr<::np4::Device>(
                 new ::np4::Device(dc.host(), dc.port()));
             break;
         }
         
-        default:
-            Logger::get()
-               ->error("Dev {}: NP4 Device config not supported", dev_id_);
+        case ::pi::np4::NP4DeviceConfig::DEVICE_NOT_SET:
+            Logger::get() ->error("Dev {}: device config not set", dev_id_);
             return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_ALLOCATE_ERROR);
         }
 
@@ -90,6 +98,7 @@ pi_status_t Device::LoadDevice(std::string data, size_t size) {
         atom_id_ = dev_config.np4_device().atom().id();
         sync_atoms_ = false;
     }
+    Logger::get()->debug("Dev {}: sync atoms is {}", dev_id_, sync_atoms_);
 
     // TODO: need to allocate DPDK
 
@@ -102,6 +111,8 @@ pi_status_t Device::LoadDevice(std::string data, size_t size) {
 
 pi_status_t Device::Start() {
 
+    Logger::get()->trace("Dev {}: Start", dev_id_);
+
     // Reset all ATOMs
     Reset();
 
@@ -110,8 +121,11 @@ pi_status_t Device::Start() {
 
 pi_status_t Device::Reset() {
     
+    Logger::get()->trace("Dev {}: Reset", dev_id_);
+
     // Reset all atoms
     for (std::size_t i=0; i < p4_dev_->getAtomCount(); i++) {
+        Logger::get()->debug("Dev {}: resetting atom {}", dev_id_, i);
         (*p4_dev_)[i].reset();
     }
 
@@ -119,6 +133,8 @@ pi_status_t Device::Reset() {
 }
 
 pi_status_t Device::Stop() {
+
+    Logger::get()->trace("Dev {}: Stop", dev_id_);
 
     // Do we need to do anything for NP4 device? 
 

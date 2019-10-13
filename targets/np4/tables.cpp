@@ -568,11 +568,12 @@ pi_status_t Tables::EntryAdd(pi_dev_id_t dev_id, pi_p4_id_t table_id,
         }
 
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: insert rule failed: ",
+        Logger::get()->error("Dev {}: insert rule failed: {}",
                              dev_id, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
+    Logger::get()->debug("rule inserted at index {}", ruleIndex);
     *entry_handle = ruleIndex;
 
     return PI_STATUS_SUCCESS;
@@ -631,7 +632,7 @@ pi_status_t Tables::DefaultActionSet(pi_dev_id_t dev_id,
         }
 
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: set default action failed: ",
+        Logger::get()->error("Dev {}: set default action failed: {}",
                              dev_id, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
@@ -681,7 +682,7 @@ pi_status_t Tables::DefaultActionReset(pi_dev_id_t dev_id,
         }
 
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: clear default action failed: ",
+        Logger::get()->error("Dev {}: clear default action failed: {}",
                              dev_id, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
@@ -726,7 +727,7 @@ pi_status_t Tables::DefaultActionGet(pi_dev_id_t dev_id,
         action = table.getDefaultAction();
 
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: get default action failed: ",
+        Logger::get()->error("Dev {}: get default action failed: {}",
                              dev_id, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
@@ -755,7 +756,7 @@ pi_status_t Tables::DefaultActionGetHandle(pi_dev_id_t dev_id,
     // Retrieve table name
     const char* tableName = pi_p4info_table_name_from_id(info, table_id);
     if (tableName == nullptr) {
-        Logger::get()->error("Dev {}: table id not found in P4 Info",
+        Logger::get()->error("Dev {}: table id {} not found in P4 Info",
                              dev_id, table_id);
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
@@ -768,7 +769,7 @@ pi_status_t Tables::DefaultActionGetHandle(pi_dev_id_t dev_id,
         ruleIndex = table.getCapacity();
 
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: get capacity failed: ",
+        Logger::get()->error("Dev {}: get capacity failed: {}",
                              dev_id, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
@@ -821,7 +822,7 @@ pi_status_t Tables::EntryDelete(pi_dev_id_t dev_id,
         }
 
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: delete rule {} failed: ",
+        Logger::get()->error("Dev {}: delete rule {} failed: {}",
                              dev_id, ruleIndex, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
