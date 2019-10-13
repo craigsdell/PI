@@ -51,6 +51,8 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
 
 		switch (fieldInfo->match_type) {
 		case PI_P4INFO_MATCH_TYPE_VALID:
+            Logger::error("error VALID match type not implemented "
+                          + std::string(keyName));
             return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_NOT_IMPLEMENTED);
 			break;
 
@@ -64,9 +66,10 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
             try {
                 // Create new key
                 key.push_back(new ::np4::KeyElemExact(keyName, keyValue));
+                Logger::debug("adding Exact key " + std::string(keyName));
 
             } catch (::np4::Exception &e) {
-                Logger::error("error creating ternary key "
+                Logger::error("error creating exact key "
                                 + std::string(keyName) + ": " +  e.what());
                 return pi_status_t(PI_STATUS_TARGET_ERROR + 
                                    P4DEV_KEY_NAME_ERROR);
@@ -90,9 +93,10 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
                 // Create new key
                 key.push_back(new ::np4::KeyElemLPM(keyName, keyValue,
                                                        prefixLen));
+                Logger::debug("adding LPM key " + std::string(keyName));
 
             } catch (::np4::Exception &e) {
-                Logger::error("error creating ternary key "
+                Logger::error("error creating lpm key "
                                 + std::string(keyName) + ": " + e.what()); 
                 return pi_status_t(PI_STATUS_TARGET_ERROR + 
                                    P4DEV_KEY_NAME_ERROR);
@@ -119,6 +123,7 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
                 key.push_back(new ::np4::KeyElemTernary(keyName, keyValue, 
                                                            keyMask));
 			    //*requires_priority = true;
+                Logger::debug("adding Ternary key " + std::string(keyName));
 
             } catch (::np4::Exception &e) {
                 Logger::error("error creating ternary key "
@@ -130,12 +135,15 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
         }
 
 		case PI_P4INFO_MATCH_TYPE_RANGE:
+            Logger::error("error range key not implemented "
+                          + std::string(keyName));
             return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_NOT_IMPLEMENTED);
 			break;
 
 		default:
-			assert(0);
-			break;
+            Logger::error("error match type not supported "
+                          + std::string(keyName));
+            return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_NOT_IMPLEMENTED);
 		}
 	}
 
@@ -497,6 +505,7 @@ pi_status_t Tables::EntryAdd(pi_dev_id_t dev_id, pi_p4_id_t table_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
+        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
@@ -572,6 +581,7 @@ pi_status_t Tables::DefaultActionSet(pi_dev_id_t dev_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
+        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
@@ -632,6 +642,7 @@ pi_status_t Tables::DefaultActionReset(pi_dev_id_t dev_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
+        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
@@ -682,6 +693,7 @@ pi_status_t Tables::DefaultActionGet(pi_dev_id_t dev_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
+        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
@@ -719,6 +731,51 @@ pi_status_t Tables::DefaultActionGet(pi_dev_id_t dev_id,
     return RetrieveEntry(info, action, table_entry);;
 }
 
+pi_status_t Tables::DefaultActionGetHandle(pi_dev_id_t dev_id,
+                                           pi_p4_id_t table_id,
+                                           pi_entry_handle_t *entry_handle) {
+
+    // Check to make sure this device id is allocated
+    auto dev =  DeviceMgr::GetDevice(dev_id);
+    if (dev == nullptr) {
+        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
+        return PI_STATUS_DEV_NOT_ASSIGNED;
+    }
+
+    // Make sure we have P4 info
+    auto info = dev->GetP4Info();
+    if (info == nullptr) {
+        Logger::error("Dev " + std::to_string(dev_id) + ": no P4 Info");
+        return PI_STATUS_DEV_NOT_ASSIGNED;
+    }
+
+    // Retrieve table name
+    const char* tableName = pi_p4info_table_name_from_id(info, table_id);
+    if (tableName == nullptr) {
+        Logger::error("Dev " + std::to_string(dev_id)
+                        + ": table id " + std::to_string(table_id)
+                        + " not found in P4 Info");
+        return PI_STATUS_INVALID_ENTRY_PROPERTY;
+    }
+
+    // Get the max table capacity and return as the
+    // default action rule index
+    size_t ruleIndex = 0;
+    try {
+        ::np4::Table& table = dev->GetP4Atom().getTable(tableName);
+        ruleIndex = table.getCapacity();
+
+    } catch (::np4::Exception &e) {
+        Logger::error("Dev " + std::to_string(dev_id)
+                        + ": get capacity failed: " + e.what());
+        return PI_STATUS_INVALID_ENTRY_PROPERTY;
+    }
+
+    *entry_handle = ruleIndex;
+
+    return PI_STATUS_SUCCESS;
+}
+
 pi_status_t Tables::EntryDelete(pi_dev_id_t dev_id,
                                 pi_p4_id_t table_id,
                                 const size_t ruleIndex) {
@@ -726,6 +783,7 @@ pi_status_t Tables::EntryDelete(pi_dev_id_t dev_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
+        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
@@ -776,6 +834,7 @@ pi_status_t Tables::EntryDeleteWKey(pi_dev_id_t dev_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
+        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
@@ -827,6 +886,7 @@ pi_status_t Tables::EntryModify(pi_dev_id_t dev_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
+        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
@@ -888,6 +948,7 @@ pi_status_t Tables::EntryModifyWKey(pi_dev_id_t dev_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
+        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
@@ -937,6 +998,7 @@ pi_status_t Tables::EntryFetch(pi_dev_id_t dev_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
+        Logger::error("Dev " + std::to_string(dev_id) + ": not allocated");
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 

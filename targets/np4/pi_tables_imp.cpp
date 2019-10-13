@@ -109,12 +109,12 @@ pi_status_t _pi_table_default_action_get_handle(
     pi_p4_id_t table_id,
     pi_entry_handle_t *entry_handle) {
 
-  (void)session_handle;
-  (void)dev_tgt;
-  (void)table_id;
-  (void)entry_handle;
+    (void)session_handle;
 
-  return PI_STATUS_NOT_IMPLEMENTED_BY_TARGET;
+	Logger::debug("PI_table_default_get_handle");
+	
+    return pi::np4::Tables::DefaultActionGetHandle(dev_tgt.dev_id,
+        table_id, entry_handle);
 }
 
 //! Delete an entry from a table using the entry handle. Should return an error

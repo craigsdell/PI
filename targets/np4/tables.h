@@ -87,6 +87,18 @@ class Tables {
                                         pi_p4_id_t table_id,
                                         pi_table_entry_t *table_entry);
 
+    // @brief Get the default action handle (i.e. row index)
+    //
+    // @param[in]   dev_id        Device Id
+    // @param[in]   table_id      Table Id
+    // @param[in]   table_entry   The returned table entry data
+    // @param[out]  entry_handle  Entry handle (i.e. rule index)
+    // @return      Function returns a PI status code
+    //
+    static pi_status_t DefaultActionGetHandle(pi_dev_id_t dev_id,
+                                              pi_p4_id_t table_id,
+                                              pi_entry_handle_t *entry_handle);
+
     // @brief Delete a table rule
     //
     // @param[in]   dev_id        Device Id
