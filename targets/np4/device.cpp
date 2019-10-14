@@ -17,7 +17,7 @@
 #include "device.h"
 #include "proto/frontend/src/logger.h"
 #include "p4dev.h"
-#include "pi/np4/np4_intel_device_config.pb.h"
+#include "pi/np4/np4_device_config.pb.h"
 
 using pi::fe::proto::Logger;
 
@@ -54,35 +54,36 @@ pi_status_t Device::LoadDevice(std::string data, size_t size) {
 
     (void)size;
 
-    // Load NP4 Intel device config protobuf
-    auto dev_config = ::pi::np4::NP4IntelDeviceConfig();
-    if (!dev_config.ParseFromString(data)) {
+    // Load NP4 device config protobuf
+    auto device_config = ::pi::np4::NP4DeviceConfig();
+    if (!device_config.ParseFromString(data)) {
         Logger::get()->error("Dev {}: invalid device config", dev_id_);
         return PI_STATUS_TARGET_ERROR;
     }
 
     // Allocate NP4 device
+    auto np4_config = device_config.np4_config();
     try {
-        switch (dev_config.np4_device().device_case()) {
-        case ::pi::np4::NP4DeviceConfig::kPath: {
+        switch (np4_config.device_case()) {
+        case ::pi::np4::NP4Config::kPath: {
             // Allocate NP4 device in offline mode (i.e. device path)
-            auto path = dev_config.np4_device().path();
+            auto path = np4_config.path();
             Logger::get()->debug("Dev {}: connecting to {}", dev_id_, path);
             p4_dev_ = std::unique_ptr<::np4::Device>(new ::np4::Device(path));
             break;
         }
 
-        case ::pi::np4::NP4DeviceConfig::kDaemon: {
+        case ::pi::np4::NP4Config::kDaemon: {
             // Allocate NP4 device in online mode (i.e. daemon)
-            auto dc = dev_config.np4_device().daemon();
+            auto dc = np4_config.daemon();
             Logger::get()->debug("Dev {}: connecting to {}:{}",
-                                 dev_id_, dc.host(), dc.port());
+                                 dev_id_, dc.addr(), dc.port());
             p4_dev_ = std::unique_ptr<::np4::Device>(
-                new ::np4::Device(dc.host(), dc.port()));
+                new ::np4::Device(dc.addr(), dc.port()));
             break;
         }
         
-        case ::pi::np4::NP4DeviceConfig::DEVICE_NOT_SET:
+        case ::pi::np4::NP4Config::DEVICE_NOT_SET:
             Logger::get() ->error("Dev {}: device config not set", dev_id_);
             return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_ALLOCATE_ERROR);
         }
@@ -94,8 +95,8 @@ pi_status_t Device::LoadDevice(std::string data, size_t size) {
     }
 
     // See if ATOM set
-    if (dev_config.np4_device().has_atom()) {
-        atom_id_ = dev_config.np4_device().atom().id();
+    if (np4_config.has_atom()) {
+        atom_id_ = np4_config.atom().id();
         sync_atoms_ = false;
     }
     Logger::get()->debug("Dev {}: sync atoms is {}", dev_id_, sync_atoms_);

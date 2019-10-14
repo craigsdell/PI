@@ -21,12 +21,12 @@ cc_proto_library(
 )
 
 proto_library(
-    name = "np4_intel_device_config_proto",
-    srcs = ["pi/np4/np4_intel_device_config.proto"]
+    name = "np4_device_config_proto",
+    srcs = ["pi/np4/np4_device_config.proto"]
 )
 
 cc_proto_library(
-    name = "np4_intel_device_config_cc_proto",
-    deps = [":np4_intel_device_config_proto"],
+    name = "np4_device_config_cc_proto",
+    deps = [":np4_device_config_proto"],
 
 )

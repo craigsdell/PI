@@ -21,9 +21,9 @@ option cc_generic_services = false;
 
 package pi.np4;
 
-message NP4DeviceConfig {
+message NP4Config {
   message Daemon {
-    string host = 1;
+    string addr = 1;
     uint32 port = 2;
   }
   oneof device {
@@ -41,9 +41,9 @@ message DPDKConfig {
   string bdf = 1;
 }
 
-message NP4IntelDeviceConfig {
+message NP4DeviceConfig {
   uint64 node_id = 1;
-  NP4DeviceConfig np4_device = 2;
-  DPDKConfig dpdk = 3;
+  NP4Config np4_config = 2;
+  DPDKConfig dpdk_config = 3;
 }
 

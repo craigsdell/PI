@@ -1,6 +1,8 @@
 # a little hacky: the headers are in the parent of the configure subdir
 AM_CPPFLAGS += \
 -I$(top_srcdir)/../../include \
+-I$(top_srcdir)/../../ \
+-I$(top_srcdir)/../../proto/third_party \
 -I$(top_srcdir)/../../proto/cpp_out
 
 libpi_np4_la_SOURCES = \

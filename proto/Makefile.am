@@ -26,7 +26,7 @@ $(abs_srcdir)/google/rpc/status.proto \
 $(abs_srcdir)/google/rpc/code.proto \
 $(abs_srcdir)/p4/tmp/p4config.proto \
 $(abs_srcdir)/gnmi/gnmi.proto \
-$(abs_srcdir)/pi/np4/np4_intel_device_config.proto
+$(abs_srcdir)/pi/np4/np4_device_config.proto
 
 # Somehow, using an absolute path above prevents me from using EXTRA_DIST =
 # $(protos)
@@ -39,7 +39,7 @@ google/rpc/status.proto \
 google/rpc/code.proto \
 p4/tmp/p4config.proto \
 gnmi/gnmi.proto \
-pi/np4/np4_intel_device_config.proto
+pi/np4/np4_device_config.proto
 
 proto_cpp_files = \
 cpp_out/p4/v1/p4data.pb.cc \
@@ -58,8 +58,8 @@ cpp_out/p4/tmp/p4config.pb.cc \
 cpp_out/p4/tmp/p4config.pb.h \
 cpp_out/gnmi/gnmi.pb.cc \
 cpp_out/gnmi/gnmi.pb.h \
-cpp_out/pi/np4/np4_intel_device_config.pb.cc \
-cpp_out/pi/np4/np4_intel_device_config.pb.h
+cpp_out/pi/np4/np4_device_config.pb.cc \
+cpp_out/pi/np4/np4_device_config.pb.h
 
 proto_grpc_files = \
 grpc_out/p4/v1/p4data.grpc.pb.cc \
@@ -78,8 +78,8 @@ grpc_out/p4/tmp/p4config.grpc.pb.cc \
 grpc_out/p4/tmp/p4config.grpc.pb.h \
 grpc_out/gnmi/gnmi.grpc.pb.cc \
 grpc_out/gnmi/gnmi.grpc.pb.h \
-grpc_out/pi/np4/np4_intel_device_config.grpc.pb.cc \
-grpc_out/pi/np4/np4_intel_device_config.grpc.pb.h
+grpc_out/pi/np4/np4_device_config.grpc.pb.cc \
+grpc_out/pi/np4/np4_device_config.grpc.pb.h
 
 includep4dir = $(includedir)/p4/v1/
 nodist_includep4_HEADERS = \
@@ -114,8 +114,8 @@ grpc_out/gnmi/gnmi.grpc.pb.h
 
 includenp4dir = $(includedir)/pi/np4/
 nodist_includenp4_HEADERS = \
-cpp_out/pi/np4/np4_intel_device_config.pb.h \
-grpc_out/pi/np4/np4_intel_device_config.grpc.pb.h
+cpp_out/pi/np4/np4_device_config.pb.h \
+grpc_out/pi/np4/np4_device_config.grpc.pb.h
 
 AM_CPPFLAGS = -Icpp_out -Igrpc_out \
 -I$(top_srcdir)/../include \
@@ -181,8 +181,8 @@ py_out/gnmi/gnmi_pb2_grpc.py
 np4pydir = $(pythondir)/gnmi
 nodist_np4py_PYTHON = \
 py_out/pi/np4/__init__.py \
-py_out/pi/np4/np4_intel_device_config_pb2.py \
-py_out/pi/np4/np4_intel_device_config_pb2_grpc.py
+py_out/pi/np4/np4_device_config_pb2.py \
+py_out/pi/np4/np4_device_config_pb2_grpc.py
 
 BUILT_SOURCES += \
 $(nodist_p4py_PYTHON) \
