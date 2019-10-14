@@ -769,10 +769,13 @@ pi_status_t Tables::DefaultActionGetHandle(pi_dev_id_t dev_id,
         ruleIndex = table.getCapacity();
 
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: get capacity failed: {}",
-                             dev_id, e.what());
+        Logger::get()->error("Dev {}: Table {}: get capacity failed: {}",
+                             dev_id, tableName, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
+
+    Logger::get()->debug("Dev {}: Table {}: default action ruleIndex is: {}",
+                         dev_id, tableName, ruleIndex);
 
     *entry_handle = ruleIndex;
 
