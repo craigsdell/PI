@@ -444,6 +444,11 @@ class DeviceMgrImp {
     p4::tmp::P4DeviceConfig p4_device_config;
     const std::string *device_data = nullptr;
     bool uses_legacy_p4_device_config = false;
+
+#ifdef __DONT_USE_LEGACY_P4_DEVICE_CONFIG__
+    // This code interferes with passing down other protobufs
+    // as part of the device config.  This should be totally 
+    // transparent to this code and passed thru to target implementation.
     if (p4_device_config.ParseFromString(config.p4_device_config())) {
       device_data = &p4_device_config.device_data();
       uses_legacy_p4_device_config = true;
@@ -451,6 +456,9 @@ class DeviceMgrImp {
     } else {
       device_data = &config.p4_device_config();
     }
+#else // __DONT_USE_LEGACY_P4_DEVICE_CONFIG__
+    device_data = &config.p4_device_config();
+#endif // __DONT_USE_LEGACY_P4_DEVICE_CONFIG__
 
     AccessArbitration::UpdateAccess update_access(&access_arbitration);
 

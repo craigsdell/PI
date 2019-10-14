@@ -50,7 +50,7 @@ std::unique_ptr<Device> Device::CreateInstance(
     return std::unique_ptr<Device>(new Device(dev_id, p4_info));
 }
 
-pi_status_t Device::LoadDevice(std::string data, size_t size) {
+pi_status_t Device::LoadDevice(const char *data, size_t size) {
 
     (void)size;
 
@@ -84,7 +84,8 @@ pi_status_t Device::LoadDevice(std::string data, size_t size) {
         }
         
         case ::pi::np4::NP4Config::DEVICE_NOT_SET:
-            Logger::get() ->error("Dev {}: device config not set", dev_id_);
+            Logger::get() ->error("Dev {}: device config not set: {}", 
+                                  dev_id_, data);
             return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_ALLOCATE_ERROR);
         }
 

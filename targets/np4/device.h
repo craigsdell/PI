@@ -89,7 +89,7 @@ class Device {
     // @param[in]   size          Size of the data
     // @return      Function returns the PI status
     //
-    pi_status_t LoadDevice(std::string data, size_t size);
+    pi_status_t LoadDevice(const char *data, size_t size);
 
     // @brief Starts the NP4 and Packet In/Out DPDK devices
     // @return      Function returns the PI status
