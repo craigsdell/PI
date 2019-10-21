@@ -17,7 +17,7 @@
 #include "device.h"
 #include "proto/frontend/src/logger.h"
 #include "p4dev.h"
-#include "pi/np4/np4_device_config.pb.h"
+#include "pi/np4/p4_device_config.pb.h"
 
 using pi::fe::proto::Logger;
 
@@ -55,7 +55,7 @@ pi_status_t Device::LoadDevice(const char *data, size_t size) {
     (void)size;
 
     // Load NP4 device config protobuf
-    auto device_config = ::pi::np4::NP4DeviceConfig();
+    auto device_config = ::pi::np4::P4DeviceConfig();
     if (!device_config.ParseFromString(data)) {
         Logger::get()->error("Dev {}: invalid device config", dev_id_);
         return PI_STATUS_TARGET_ERROR;
@@ -102,7 +102,14 @@ pi_status_t Device::LoadDevice(const char *data, size_t size) {
     }
     Logger::get()->debug("Dev {}: sync atoms is {}", dev_id_, sync_atoms_);
 
-    // TODO: need to allocate DPDK
+    // Allocate DPDK port
+    auto dpdk_config = device_config.dpdk_config();
+    dpdk_dev_ = DPDKDevice::CreateInstance(dev_id_, dpdk_config);
+    if (dpdk_dev_ == nullptr) {
+        Logger::get()->error("Failed to create DPDK Device for {}",
+                             dpdk_config.device_name());
+        return PI_STATUS_TARGET_ERROR;
+    }
 
     // TODO: 
     // - check current image on FPGA to see if same
@@ -117,6 +124,9 @@ pi_status_t Device::Start() {
 
     // Reset all ATOMs
     Reset();
+
+    // Start the DPDK PMD PacketIn receievers
+    dpdk_dev_->Start();
 
     return PI_STATUS_SUCCESS;
 }
@@ -141,8 +151,15 @@ pi_status_t Device::Stop() {
     // Do we need to do anything for NP4 device? 
 
     // Stop the DPDK PMD
+    dpdk_dev_->Stop();
 
     return PI_STATUS_SUCCESS;
+}
+
+pi_status_t Device::PacketOut(const char *pkt, size_t size) {
+    Logger::get()->trace("Dev {}: PacketOut, size {}", dev_id_, size);
+
+    return dpdk_dev_->PacketOut(pkt, size);
 }
 
 }   // np4

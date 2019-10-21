@@ -93,11 +93,8 @@ pi_status_t _pi_batch_end(pi_session_handle_t session_handle, bool hw_sync) {
 // TODO: need to send via DPDK library
 pi_status_t _pi_packetout_send(pi_dev_id_t dev_id, const char *pkt,
                                size_t size) {
-  (void)dev_id;
-  (void)pkt;
-  (void)size;
 
-  return PI_STATUS_SUCCESS;
+  return pi::np4::DeviceMgr::PacketOut(dev_id, pkt, size);
 }
 
 // TODO: need to get port status?

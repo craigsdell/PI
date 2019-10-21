@@ -20,6 +20,7 @@
 #include <PI/target/pi_imp.h>
 #include <vector>
 #include <np4atom.hpp>
+#include <dpdk_device.h>
 
 #define DEF_ATOM_PORT   6660
 #define MAX_ATOM_PORT   65535
@@ -106,6 +107,13 @@ class Device {
     //
     pi_status_t Stop();
 
+    // @brief Sends a PacketOut
+    // @param[in]   pkt           Packet to send
+    // @param[in]   size          Size of the packet
+    // @return      Function returns the PI status
+    //
+    pi_status_t PacketOut(const char *pkt, size_t size);
+
     Device(pi_dev_id_t dev_id, const pi_p4info_t* p4_info);
 
     // Device is neither copyable or movable
@@ -119,6 +127,7 @@ class Device {
   private:
     pi_dev_id_t  dev_id_;         // PI Device ID
     std::unique_ptr<::np4::Device> p4_dev_;  // NP4 Device
+    std::unique_ptr<DPDKDevice> dpdk_dev_;  // DPDK Device
     std::size_t  atom_id_;        // ATOM id if only using one ATOM
     bool         sync_atoms_;     // keep atoms in sync flag
     const pi_p4info_t* p4_info_;

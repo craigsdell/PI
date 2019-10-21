@@ -19,6 +19,7 @@
 #include <PI/pi.h>
 #include <PI/target/pi_imp.h>
 #include <vector>
+#include <mutex>
 #include <map>
 #include <device.h>
 
@@ -41,6 +42,18 @@ class DeviceMgr {
     // @brief Destroy the device manager
     // 
     static pi_status_t Destroy();
+
+    // @brief Initialise the DPDK EAL
+    //
+    // @param[in]   argc        The number of args
+    // @param[in]   argv        Array of pointers to args (see EAL init)
+    // @return      Function returns PI Status
+    //
+    // Note: this needs to be called by whatever component is using
+    //       the PI library.  After the ::pi::fe::DeviceMgr() call but
+    //       before you start using any DPDK devices.
+    // 
+    static pi_status_t DPDKInit(int argc, char* argv[]);
 
     // @brief Get the number of devices
     //
@@ -88,6 +101,13 @@ class DeviceMgr {
     //
 	static pi_status_t RemoveDevice(pi_dev_id_t dev_id); 
 
+    // @brief Send PacketOut to DPDK interface
+    //
+    // @param[in]   dev_id             Device Id
+    //
+    static pi_status_t PacketOut(pi_dev_id_t dev_id,
+                                 const char *pkt, size_t size);
+
     // DeviceMgr is neither copyable or movable
     DeviceMgr(const DeviceMgr&) = delete;
     DeviceMgr& operator=(const DeviceMgr&) = delete;
@@ -97,6 +117,9 @@ class DeviceMgr {
   private:
     // Private, need to use CreateInstance
     DeviceMgr() {};
+
+    // Lock to protext devices map and dpdk_initialized
+    mutable std::mutex mutex{};
 
     // Map of devices
     std::map<pi_dev_id_t, std::unique_ptr<Device>> devices;

@@ -75,3 +75,10 @@ def PI_deps():
             remote = "https://github.com/nelhage/rules_boost",
             commit = "a3b25bf1a854ca7245d5786fda4821df77c57827",
         )
+
+    if "com_github_dpdk" not in native.existing_rules():
+        remote_workspace(
+            name = "com_github_dpdk",
+            remote = "https://github.com/DPDK/dpdk.git",
+            tag = "v19.08-rc4",
+        )

@@ -17,8 +17,10 @@
 #include "p4dev.h"
 #include "device_mgr.h"
 #include "device.h"
-//#include "logger.h"
 #include "proto/frontend/src/logger.h"
+#include "rte_eal.h"
+#include "rte_ethdev.h"
+#include "rte_errno.h"
 
 using pi::fe::proto::Logger;
 
@@ -26,6 +28,7 @@ namespace pi {
 namespace np4 {
 
 DeviceMgr* np4_device_mgr_ = nullptr;
+bool dpdk_initialized_{false};
 
 pi_status_t DeviceMgr::Init() {
 
@@ -44,6 +47,51 @@ pi_status_t DeviceMgr::Destroy() {
         delete np4_device_mgr_;
         np4_device_mgr_ = nullptr;
     }
+
+    return PI_STATUS_SUCCESS;
+}
+
+// Note: this needs to be called by whatever component is using
+//       PI library.  After the ::pi::fe::DeviceMgr() call but
+//       before you start using any devices.
+
+pi_status_t DeviceMgr::DPDKInit(int argc, char* argv[]) {
+
+    // Check to make sure Device Manager initialised
+    if (np4_device_mgr_ == nullptr) {
+        Logger::get()->error("DeviceMgr not initialised");
+        return PI_STATUS_TARGET_ERROR;
+    }
+
+    // Make sure we only call this once
+    std::unique_lock<std::mutex> lock(np4_device_mgr_->mutex);
+    if (dpdk_initialized_) {
+        Logger::get()->error("DPDK Init has already been called");
+        return PI_STATUS_TARGET_ERROR;
+    }
+
+	// Initialize the Environment Abstraction Layer (EAL).
+	int ret = rte_eal_init(argc, argv);
+	if (ret < 0) {
+        Logger::get()->error("DPDK EAL init failed: {}", rte_errno);
+        return pi_status_t(PI_STATUS_TARGET_ERROR+rte_errno);
+    }
+    Logger::get()->info("EAL init successful");
+
+    // not really necessary
+	argc -= ret;
+	argv += ret;
+
+    // Check we've got at least one DPDK device
+    auto nb_ports = rte_eth_dev_count_avail();
+    if (nb_ports < 1) {
+        Logger::get()->error("DPDK needs at least one DPDK device: {}/{}",
+                             nb_ports, rte_errno);
+        return pi_status_t(PI_STATUS_TARGET_ERROR+rte_errno);
+    }
+    Logger::get()->info("DPDK Init found {} devices", nb_ports);
+
+    dpdk_initialized_ = true;
 
     return PI_STATUS_SUCCESS;
 }
@@ -67,6 +115,7 @@ Device* DeviceMgr::GetDevice(pi_dev_id_t dev_id) {
         return nullptr;
     }
 
+    std::unique_lock<std::mutex> lock(np4_device_mgr_->mutex);
     if (np4_device_mgr_->devices.find(dev_id) 
             == np4_device_mgr_->devices.end()) {
         return nullptr;
@@ -85,18 +134,21 @@ pi_status_t DeviceMgr::AssignDevice(pi_dev_id_t dev_id,
     }
 
     // Check to make sure this device id is not allocated
-    auto dev =  np4_device_mgr_->GetDevice(dev_id);
-    if (dev != nullptr) {
+    if (np4_device_mgr_->GetDevice(dev_id) != nullptr) {
         Logger::get()->error("Dev {} already allocated", dev_id);
         return PI_STATUS_DEV_ALREADY_ASSIGNED;
     }
 
-    // Allocate NP4 device in online mode (i.e. Atom Daemon)
-    np4_device_mgr_->devices[dev_id] = Device::CreateInstance(dev_id, info);
-
-    // Did it work
-    if (np4_device_mgr_->devices[dev_id] == nullptr)
+    // Allocate device 
+    auto dev = Device::CreateInstance(dev_id, info);
+    if (dev == nullptr) {
+        Logger::get()->error("Dev {}: device create failed");
         return PI_STATUS_ALLOC_ERROR;
+    }
+
+    // Move into devices map
+    std::unique_lock<std::mutex> lock(np4_device_mgr_->mutex);
+    np4_device_mgr_->devices[dev_id] = std::move(dev);
 
     return PI_STATUS_SUCCESS;
 }
@@ -169,6 +221,26 @@ pi_status_t DeviceMgr::RemoveDevice(pi_dev_id_t dev_id) {
     np4_device_mgr_->devices.erase(dev_id);
 
     return PI_STATUS_SUCCESS;
+}
+
+pi_status_t
+DeviceMgr::PacketOut(pi_dev_id_t dev_id, const char *pkt, size_t size) {
+
+    // Check to make sure Device Manager initialised
+    if (np4_device_mgr_ == nullptr) {
+        Logger::get()->error("DeviceMgr not initialised");
+        return PI_STATUS_DEV_NOT_ASSIGNED;
+    }
+
+    // Check to make sure this device id is allocated
+    auto dev =  np4_device_mgr_->GetDevice(dev_id);
+    if (dev == nullptr) {
+        Logger::get()->error("Dev {} not allocated", dev_id);
+        return PI_STATUS_DEV_NOT_ASSIGNED;
+    }
+
+    // Call PacketOut
+    return dev->PacketOut(pkt, size);
 }
 
 }   // np4

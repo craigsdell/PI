@@ -3,7 +3,12 @@ AM_CPPFLAGS += \
 -I$(top_srcdir)/../../include \
 -I$(top_srcdir)/../../ \
 -I$(top_srcdir)/../../proto/third_party \
--I$(top_srcdir)/../../proto/cpp_out
+-I$(top_srcdir)/../../proto/cpp_out \
+-I$(NP4_INSTALL)/include/dpdk \
+-I$(NP4_INSTALL)/include/ \
+-I/usr/include/x86_64-linux-gnu \
+-I/usr/include/x86_64-linux-gnu/c++/7 \
+-m32 -mssse3
 
 libpi_np4_la_SOURCES = \
 pi_imp.cpp \
@@ -16,6 +21,7 @@ pi_tables_imp.cpp \
 pi_clone_imp.cpp \
 device_mgr.cpp \
 device.cpp \
+dpdk_device.cpp \
 counter.cpp \
 tables.cpp
 

@@ -13,6 +13,10 @@ switched_rules_by_language(
     cc = True,
 )
 
+# NP4 libraries
+load("//targets/np4:np4.bzl", "np4_configure")
+np4_configure(name = "local_np4_bin")
+
 load("@build_stack_rules_proto//cpp:deps.bzl", "cpp_grpc_library")
 cpp_grpc_library()
 

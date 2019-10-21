@@ -38,10 +38,17 @@ message NP4Config {
 }
 
 message DPDKConfig {
-  string bdf = 1;
+  string device_name = 1;  // In Domain:Bus:Device.Func format 0000:b1:00.0
+  uint32 rx_ring_size = 2;
+  uint32 tx_ring_size = 3;
+  uint32 num_rx_rings = 4;
+  uint32 num_tx_rings = 5;
+  uint32 num_mbufs = 6;
+  uint32 mbuf_cache_size = 7;
+  uint32 burst_size = 8;
 }
 
-message NP4DeviceConfig {
+message P4DeviceConfig {
   uint64 node_id = 1;
   NP4Config np4_config = 2;
   DPDKConfig dpdk_config = 3;
