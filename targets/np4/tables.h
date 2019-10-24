@@ -158,6 +158,32 @@ class Tables {
                                   pi_p4_id_t table_id,
                                   pi_table_fetch_res_t *res);
 
+    // @brief Fetch one rule in a table
+    //
+    // @param[in]   dev_id        Device Id
+    // @param[in]   table_id      Table Id
+    // @param[in]   ruleIndex     Rule index (0 gets all entries)
+    // @param[out]  res           The table rules returned
+    // @return      Function returns a PI status code
+    //
+    static pi_status_t EntryFetchOne(pi_dev_id_t dev_id,
+                                     pi_p4_id_t table_id,
+                                     size_t ruleIndex,
+                                     pi_table_fetch_res_t *res);
+
+    // @brief Fetch all the rules in a table With Key
+    //
+    // @param[in]   dev_id        Device Id
+    // @param[in]   table_id      Table Id
+    // @param[in]   match_key     Key to match on
+    // @param[out]  res           The table rules returned
+    // @return      Function returns a PI status code
+    //
+    static pi_status_t EntryFetchWKey(pi_dev_id_t dev_id,
+                                      pi_p4_id_t table_id,
+                                      const pi_match_key_t *match_key,
+                                      pi_table_fetch_res_t *res);
+
     // Tables is neither copyable or movable
     Tables(const Tables&) = delete;
     Tables& operator=(const Tables&) = delete;

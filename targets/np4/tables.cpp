@@ -27,6 +27,57 @@ namespace np4 {
 
 //---------------- Table Helper functions ---------------------------
 
+using ParamMap = std::unordered_map<size_t, const ::np4::Parameter&>;
+
+// @brief Helper function to create the param id to param object map
+//
+// @param[in]   info        P4 Info
+// @param[in]   actionId    The action id of this action
+// @param[in]   parameters  A vector of NP4 parameter objects
+// @return      Function returns a map of NP4 Parameters indexed by id
+//
+ParamMap CreateParamMap(const pi_p4info_t* info,
+                        const pi_p4_id_t actionId,
+                        const std::vector<::np4::Parameter>& parameters) {
+
+    // Create parameter map for this action
+    ParamMap pmap;
+    pmap.reserve(parameters.size());
+    for (const ::np4::Parameter& param : parameters) {
+        size_t id = pi_p4info_action_param_id_from_name(info, actionId,
+                                                        param.name.c_str());
+        pmap.emplace(id, param);
+    }
+    return pmap;
+}
+
+
+using KeyMap = std::unordered_map<size_t, const ::np4::KeyElem*>;
+
+// @brief Helper function to create the key id to key object map
+//
+// @param[in]   info        P4 Info
+// @param[in]   table_id    The action id of this action
+// @param[in]   key         The key class
+// @return      Function returns a map of NP4 KeyElems indexed by id
+//
+KeyMap CreateKeyMap(const pi_p4info_t* info,
+                        const pi_p4_id_t table_id,
+                        const ::np4::Key& key) {
+
+    // Create key map for this key
+    KeyMap kmap;
+    kmap.reserve(key.size());
+    for (const ::np4::KeyElem* keyElem : key) {
+        size_t id = pi_p4info_table_match_field_id_from_name(info, table_id,
+                                                        keyElem->name.c_str());
+        kmap[id] = keyElem;
+        //kmap.insert(id, keyElem);
+    }
+    return kmap;
+}
+
+
 // @brief Set the match key data in the np4::Key object
 //
 // @param[in]   info        P4 Info
@@ -38,33 +89,33 @@ namespace np4 {
 pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id, 
                    const pi_match_key_t *match_key, ::np4::Key& key) {
 
-	const char *data = reinterpret_cast<const char *>(match_key->data);
+    const char *data = reinterpret_cast<const char *>(match_key->data);
 
-	size_t matchFieldsSize = pi_p4info_table_num_match_fields(info, table_id);
-	for (size_t i = 0; i < matchFieldsSize; i++) {
-		const pi_p4info_match_field_info_t *fieldInfo = 
+    size_t matchFieldsSize = pi_p4info_table_num_match_fields(info, table_id);
+    for (size_t i = 0; i < matchFieldsSize; i++) {
+
+        const pi_p4info_match_field_info_t *fieldInfo = 
             pi_p4info_table_match_field_info(info, table_id, i);
-		size_t bitwidth = fieldInfo->bitwidth;
-		size_t bytewidth = (bitwidth + 7) / 8;
-		uint32_t prefixLen;
-		const char *keyName = 
+        size_t bitwidth = fieldInfo->bitwidth;
+        size_t bytewidth = (bitwidth + 7) / 8;
+        uint32_t prefixLen;
+        const char *keyName = 
             pi_p4info_table_match_field_name_from_id(info, table_id, 
                                                      fieldInfo->mf_id);
 
-		switch (fieldInfo->match_type) {
-		case PI_P4INFO_MATCH_TYPE_VALID:
+        switch (fieldInfo->match_type) {
+        case PI_P4INFO_MATCH_TYPE_VALID:
             Logger::get()->error("error VALID match type not implemented: {}",
                                keyName);
             return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_NOT_IMPLEMENTED);
-			break;
 
-		case PI_P4INFO_MATCH_TYPE_EXACT: {
+        case PI_P4INFO_MATCH_TYPE_EXACT: {
             // Create value vector
             std::vector<uint8_t> keyValue;
             for (size_t i=0; i < bytewidth; i++) {
                 keyValue.push_back(*data++);
             }
-			
+
             try {
                 // Create new key
                 key.push_back(new ::np4::KeyElemExact(keyName, keyValue));
@@ -76,10 +127,10 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
                 return pi_status_t(PI_STATUS_TARGET_ERROR + 
                                    P4DEV_KEY_NAME_ERROR);
             }
-			break;
+            break;
         }
 
-		case PI_P4INFO_MATCH_TYPE_LPM: {
+        case PI_P4INFO_MATCH_TYPE_LPM: {
             // Create value vector
             std::vector<uint8_t> keyValue;
             for (size_t i=0; i < bytewidth; i++) {
@@ -87,9 +138,9 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
             }
 
             // Retrieve prefix length
-			data += retrieve_uint32(data, &prefixLen);
+            data += retrieve_uint32(data, &prefixLen);
             // TODO: do we need this with the new ATOM library?
-			//flipEndianness(value, bytewidth);
+            //flipEndianness(value, bytewidth);
 
             try {
                 // Create new key
@@ -103,10 +154,10 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
                 return pi_status_t(PI_STATUS_TARGET_ERROR + 
                                    P4DEV_KEY_NAME_ERROR);
             }
-			break;
+            break;
         }
 
-		case PI_P4INFO_MATCH_TYPE_TERNARY: {
+        case PI_P4INFO_MATCH_TYPE_TERNARY: {
             // Create value vector
             std::vector<uint8_t> keyValue;
             for (size_t i=0; i < bytewidth; i++) {
@@ -124,7 +175,7 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
                 // - TODO: priority support
                 key.push_back(new ::np4::KeyElemTernary(keyName, keyValue, 
                                                            keyMask));
-			    //*requires_priority = true;
+                //*requires_priority = true;
                 Logger::get()->debug("adding Ternary key {}", keyName);
 
             } catch (::np4::Exception &e) {
@@ -133,22 +184,21 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
                 return pi_status_t(PI_STATUS_TARGET_ERROR + 
                                    P4DEV_KEY_NAME_ERROR);
             }
-			break;
+            break;
         }
 
-		case PI_P4INFO_MATCH_TYPE_RANGE:
+        case PI_P4INFO_MATCH_TYPE_RANGE:
             Logger::get()->error(
                 "error range key not implemented {}", keyName);
             return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_NOT_IMPLEMENTED);
-			break;
 
-		default:
+        default:
             Logger::get()->error("error match type not supported {}", keyName);
             return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_NOT_IMPLEMENTED);
-		}
-	}
+        }
+    }
 
-	return PI_STATUS_SUCCESS;
+    return PI_STATUS_SUCCESS;
 }
 
 // @brief Helper function to add action data to the ::np4::Key object
@@ -162,12 +212,9 @@ pi_status_t AddAction(const pi_p4info_t *info,
                       const pi_action_data_t *action_data,
                       ::np4::Action& action) {
 
-	assert(info);
-	assert(action_data);
-
-	pi_p4_id_t actionID = action_data->action_id;
-	const char *actionData = action_data->data;
-	const char *actionName = pi_p4info_action_name_from_id(info, actionID);
+    pi_p4_id_t actionID = action_data->action_id;
+    const char *actionData = action_data->data;
+    const char *actionName = pi_p4info_action_name_from_id(info, actionID);
     if (actionName == nullptr) {
         Logger::get()->error("can't find action name from id {}", actionID);
         return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_ACTION_NAME_ERROR);
@@ -175,18 +222,18 @@ pi_status_t AddAction(const pi_p4info_t *info,
 
     // Now add params
     std::vector<::np4::Parameter> params;
-	size_t paramIdsSize;
-	const pi_p4_id_t *paramIds = 
+    size_t paramIdsSize;
+    const pi_p4_id_t *paramIds = 
         pi_p4info_action_get_params(info, actionID, &paramIdsSize);
 
-	for (size_t i = 0; i < paramIdsSize; i++) {
+    for (size_t i = 0; i < paramIdsSize; i++) {
 
-		size_t paramBitwidth = 
+        size_t paramBitwidth = 
             pi_p4info_action_param_bitwidth(info, actionID, paramIds[i]);
-		size_t paramBytewidth = (paramBitwidth + 7) / 8;
+        size_t paramBytewidth = (paramBitwidth + 7) / 8;
 
         // Get param name
-		const char *paramName = 
+        const char *paramName = 
             pi_p4info_action_param_name_from_id(info, actionID, paramIds[i]);
         if (paramName == nullptr) {
             Logger::get()->error("Can't find param name for id {}",
@@ -203,7 +250,7 @@ pi_status_t AddAction(const pi_p4info_t *info,
 
         // Add to parameter list
         params.push_back(::np4::Parameter(paramName, value));
-	}
+    }
 
     try {
         // Add Action to rule
@@ -215,61 +262,7 @@ pi_status_t AddAction(const pi_p4info_t *info,
         return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_ACTION_NAME_ERROR);
     }
 
-	return PI_STATUS_SUCCESS;
-}
-
-// @brief Helper function to retrieve a table entry
-//
-// @param[in]   info        P4 Info
-// @param[in]   action      The NP4 Action we'll use as the source
-// @param[out]  table_entry The table entry we'll set
-// @return      Function returns a P4DEV status code
-//
-pi_status_t RetrieveEntry(const pi_p4info_t *info,
-                          ::np4::Action& action,
-                          pi_table_entry_t *table_entry) {
-
-	const pi_p4_id_t actionId = 
-        pi_p4info_action_id_from_name(info, action.name.c_str());
-	const size_t actionDataSize = pi_p4info_action_data_size(info, actionId);
-
-	table_entry->entry_type = PI_ACTION_ENTRY_TYPE_DATA;
-
-	char *data_ = new char[sizeof(pi_action_data_t) + actionDataSize];
-	if (data_ == NULL) return PI_STATUS_ALLOC_ERROR;
-	pi_action_data_t *actionData = (pi_action_data_t *)(data_);
-	data_ += sizeof(pi_action_data_t);
-
-	actionData->p4info = info;
-	actionData->action_id = actionId;
-	actionData->data_size = actionDataSize;
-	actionData->data = data_;
-
-	table_entry->entry.action_data = actionData;
-
-	size_t paramCount;
-	const pi_p4_id_t *paramIds =
-        pi_p4info_action_get_params(info, actionId, &paramCount);
-
-    // retrieve the action parameters
-	size_t i = 0;
-    for (auto param : action.parameters) {
-		size_t bitwidth =
-            pi_p4info_action_param_bitwidth(info, actionId, paramIds[i]);
-		size_t bytewidth = (bitwidth + 7) / 8;
-		assert(bytewidth >= param.value.size());
-
-		size_t offset = bytewidth - param.value.size();
-		memset(data_, 0, offset);
-
-        // Copy in the value
-        for (auto byte : param.value) {
-            data_[offset++] = byte;
-        }
-		data_ += bytewidth;
-    }
-
-	return PI_STATUS_SUCCESS;
+    return PI_STATUS_SUCCESS;
 }
 
 using ActionMap = std::unordered_map<std::string, ActionProperties>;
@@ -286,79 +279,178 @@ ActionMap ComputeActionSizes(const pi_p4info_t* info,
                              size_t actionCount) {
 
     ActionMap result;
-	result.reserve(actionCount);
+    result.reserve(actionCount);
 
-	for (size_t i = 0; i < actionCount; i++) {
-		result.emplace(
-			std::string(pi_p4info_action_name_from_id(info, actionIds[i])),
-			ActionProperties(pi_p4info_action_data_size(info, actionIds[i]), 
-                                                        actionIds[i])
-		);
-	}
+    for (size_t i = 0; i < actionCount; i++) {
+        result.emplace(
+            std::string(pi_p4info_action_name_from_id(info, actionIds[i])),
+            ActionProperties(pi_p4info_action_data_size(info, actionIds[i]), 
+                             actionIds[i])
+        );
+    }
 
-	return result;
+    return result;
 }
+
+
+// @brief Helper function to calculate a rule's key size
+//
+// @param[in]   key         Rule key
+// @return      Function returns the size required for the key
+//
+size_t CalcKeyDataSize(::np4::Key& key) {
+
+    // Check the table key size because of bug in NP4 API
+    // where all keys must be same match type.
+    size_t dataSize = 0;
+    for (auto keyElem : key) {
+        switch (keyElem->type) {
+        case ::np4::info::MatchEngineType::Ternary: {
+            ::np4::KeyElemTernary* keyElemTernary = 
+                reinterpret_cast<::np4::KeyElemTernary*>(keyElem);
+            dataSize += keyElemTernary->value.size();
+            dataSize += keyElemTernary->mask.size();
+            break;
+        }
+
+        case ::np4::info::MatchEngineType::LPM: {
+            auto keyElemLPM = reinterpret_cast<::np4::KeyElemLPM *>(keyElem);
+            dataSize += keyElemLPM->value.size() + sizeof(uint32_t);
+            break;
+        }
+
+        case ::np4::info::MatchEngineType::Exact: {
+            dataSize += keyElem->value.size();
+            break;
+        }
+
+        default:
+            Logger::get()->error("Key type {} not handled",
+                                 std::to_string(keyElem->type));
+        }
+    }
+
+    Logger::get()->debug("CalcKeyDataSize needs {} bytes", dataSize);
+
+    return dataSize;
+}
+
 
 // @brief Helper function to calculate a rule's data size
 //
 // @param[in]   info        P4 Info
 // @param[in]   table_id    Table Id
 // @param[in]   table       NP4 Table reference
-// @param[in]   maxRuleIndex Max cpacity of the table
+// @param[in]   ruleIndex   Zero if we want them all, else the rule index
 // @param[in]   actionMap   Action map holding action data sizes
 // @param[out]  res         calculated results go here
 // @return      Function returns the data size required for a rule
 //
-size_t CalcRuleDataSize(const pi_p4info_t *info,
-                        pi_p4_id_t table_id,
-                        ::np4::Table& table,
-                        size_t maxRuleIndex,
+size_t CalcRuleDataSize(::np4::Table& table,
+                        size_t ruleIndex,
                         ActionMap& actionMap,
                         pi_table_fetch_res_t *res) {
 
-    // Calculate space needed
-	size_t dataSize = 0U;
-	res->p4info = info;
-	res->num_direct_resources = res->num_entries;
+    size_t dataSize = 0;
 
-	dataSize += res->num_entries * sizeof(s_pi_entry_handle_t);
-	dataSize += res->num_entries * sizeof(s_pi_action_entry_type_t);
-	dataSize += res->num_entries * sizeof(uint32_t);  // for priority
-	dataSize += res->num_entries * sizeof(uint32_t);  // for properties
-	dataSize += res->num_entries * sizeof(uint32_t);  // for dir resources
-
-	res->mkey_nbytes = pi_p4info_table_match_key_size(info, table_id);
-	dataSize += res->num_entries * res->mkey_nbytes;
-
-	size_t num_actions;
-	auto actionIds = pi_p4info_table_get_actions(info, table_id, &num_actions);
-	actionMap = ComputeActionSizes(info, actionIds, num_actions);
-
-    size_t ruleIndex = 0;
-	for (uint32_t i = 0; i < res->num_entries; i++) {
+    try {
         ::np4::Rule rule;
-        try {
-            rule = table.getRule(ruleIndex);
+        rule = table.getRule(ruleIndex);
 
-        // Table is sparsely populated so should be ok
-        } catch (::np4::Exception &e) {
-            Logger::get()->debug(
-                "table id {}: rule fetch failed on index {}: {}",
-                    table_id, ruleIndex, e.what());
+        // Check the table key size because of bug in NP4 API
+        // where all keys must be same match type.
+        size_t keySize = CalcKeyDataSize(rule.key);
+        if (keySize != res->mkey_nbytes) {
+            Logger::get()->error("{} API Key size {} != P4 Info size {}",
+                                 table.getInfo().name,
+                                 keySize, res->mkey_nbytes);
+            return 0;
         }
 
         dataSize += actionMap.at(rule.action.name).size;
         dataSize += sizeof(s_pi_p4_id_t); // Action ID
         dataSize += sizeof(uint32_t); // Action params bytewidth
 
-        // increment rule index and check we don't go over capacity
-        if (++ruleIndex == maxRuleIndex) {
-            Logger::get()->error(
-                "Table Id {}: fetch rules has only found {} rules",
-                    table_id, i);
-            break;
-        }
+    // Table is sparsely populated so should be ok
+    } catch (::np4::Exception &e) {
+        Logger::get()->debug("table {}: rule fetch failed on index {}: {}",
+            table.getInfo().name, ruleIndex, e.what());
     }
+
+    Logger::get()->debug("CalcRuleDataSize needs {} bytes", dataSize);
+
+    return dataSize;
+}
+
+// @brief Helper function to calculate a table's data size
+//
+// @param[in]   info        P4 Info
+// @param[in]   table_id    Table Id
+// @param[in]   table       NP4 Table reference
+// @param[in]   ruleIndex   Zero if we want them all, else the rule index
+// @param[in]   actionMap   Action map holding action data sizes
+// @param[out]  res         calculated results go here
+// @return      Function returns the data size required for a rule
+//
+size_t CalcTableDataSize(const pi_p4info_t *info,
+                        pi_p4_id_t table_id,
+                        ::np4::Table& table,
+                        size_t ruleIndex,
+                        ActionMap& actionMap,
+                        pi_table_fetch_res_t *res) {
+
+    // Just make sure we've got something over 0
+    if (res->num_entries == 0) return 0;
+
+    // Calculate space needed
+    size_t dataSize = 0U;
+    res->p4info = info;
+    res->num_direct_resources = res->num_entries;
+
+    dataSize += res->num_entries * sizeof(s_pi_entry_handle_t);
+    dataSize += res->num_entries * sizeof(s_pi_action_entry_type_t);
+    dataSize += res->num_entries * sizeof(uint32_t);  // for priority
+    dataSize += res->num_entries * sizeof(uint32_t);  // for properties
+    dataSize += res->num_entries * sizeof(uint32_t);  // for dir resources
+
+    res->mkey_nbytes = pi_p4info_table_match_key_size(info, table_id);
+    dataSize += res->num_entries * res->mkey_nbytes;
+
+    size_t num_actions;
+    auto actionIds = pi_p4info_table_get_actions(info, table_id, &num_actions);
+    actionMap = ComputeActionSizes(info, actionIds, num_actions);
+
+    // Spin thru whole table
+    size_t got = 0;
+    if (res->num_entries > 1) {
+        size_t maxRuleIndex = table.getCapacity();
+        for (ruleIndex = 0; ruleIndex < maxRuleIndex; ruleIndex++) {
+            size_t rc = CalcRuleDataSize(table, ruleIndex, actionMap, res);
+
+            // Increment the size
+            dataSize += rc;
+
+            // Check to see if it was successful
+            if (rc != 0 && ++got == res->num_entries) break;
+        }
+
+    // Only get size of one entry
+    } else {
+        size_t rc = CalcRuleDataSize(table, ruleIndex, actionMap, res);
+
+        // Check to see if it was successful
+        if (rc != 0) got++;
+        dataSize += rc;
+    }
+
+    // Did we get enough entries
+    if (got < res->num_entries) {
+        Logger::get()->warn(
+                    "Table Id {}: fetch rules has only found {} of {} rules",
+                    table_id, got, res->num_entries);
+    }
+
+    Logger::get()->debug("CalcTableDataSize needs {} bytes", dataSize);
 
     return dataSize;
 }
@@ -376,33 +468,152 @@ char *CopyActionData(const pi_p4info_t *info,
                      pi_p4_id_t actionId,
                      const ::np4::Action& action) {
 
-	size_t paramCount;
-	const pi_p4_id_t *paramIds =
+    char *start = data;
+
+    // Create parameter map for this action
+    auto pmap = CreateParamMap(info, actionId, action.parameters);
+
+    size_t paramCount;
+    const pi_p4_id_t *paramIds =
         pi_p4info_action_get_params(info, actionId, &paramCount);
 
-	size_t i = 0;
-    for (auto param : action.parameters) {
+    for (size_t i=0; i < paramCount; i++) {
+
+        // Grab param object
+        auto id = paramIds[i];
+        auto it = pmap.find(id);
+        if (it == pmap.end()) {
+            Logger::get()->error("CopyActionData can't find param for id {}",
+                                 id);
+            return nullptr;
+        }
+        const ::np4::Parameter& param = it->second;
 
         // Calc widths of param
-		size_t bitwidth = pi_p4info_action_param_bitwidth(info, actionId, 
-                                                          paramIds[i]);
-		size_t bytewidth = (bitwidth + 7) / 8;
+        size_t bitwidth =
+            pi_p4info_action_param_bitwidth(info, actionId, id);
+        size_t bytewidth = (bitwidth + 7) / 8;
 
-		assert(bytewidth >= param.value.size());
-
-		size_t offset = bytewidth - param.value.size();
-		memset(data, 0, offset);
-        for (auto byte : param.value) {
-            *data++ = byte;
+        // Check for bytewidth smaller than what we're about
+        // to copy in from the API call
+        if (bytewidth < param.value.size()) {
+            Logger::get()->error(
+                "CopyActionData bytewidth {} smaller than param value size {}",
+                bytewidth, param.value.size());
+            return nullptr;
         }
-	}
 
-	return data;
+        size_t offset = bytewidth - param.value.size();
+        memset(data, 0, offset);
+        for (auto byte : param.value) {
+            data[offset++] = byte;
+        }
+        data += bytewidth;
+        Logger::get()->debug("CopyActionParam {} size {}", 
+            param.name, bytewidth);
+    }
+    Logger::get()->debug("CopyActionData {} data size {}",
+        action.name, (data - start));
+
+    return data;
+}
+
+// @brief Copy in the key data to the given data pointer
+//
+// @param[in]   data        pointer to the destination space
+// @param[in]   key         The key we need to copy
+// @return      Function returns the incremented data pointer
+//
+char *CopyKeyData(const pi_p4info_t *info, char *data,
+                  const pi_p4_id_t table_id, const ::np4::Key& key) {
+
+    char* start = data;
+    Logger::get()->trace("CopyKeyData key size {}", key.size());
+
+    // Create parameter map for this action
+    auto kmap = CreateKeyMap(info, table_id, key);
+
+    size_t keyCount;
+    const pi_p4_id_t *keyIds =
+        pi_p4info_table_get_match_fields(info, table_id, &keyCount);
+
+    for (size_t i=0; i < keyCount; i++) {
+
+        // Grab key element object
+        auto id = keyIds[i];
+        auto it = kmap.find(id);
+        if (it == kmap.end()) {
+            Logger::get()->error("CopyKeyData can't find key with id {}",
+                                 id);
+            return nullptr;
+        }
+        const ::np4::KeyElem* keyElem = it->second;
+
+        size_t keyDataSize = 0;
+        switch (keyElem->type) {
+        case ::np4::info::MatchEngineType::Ternary: {
+            auto keyElemTernary = 
+                reinterpret_cast<const ::np4::KeyElemTernary*>(keyElem);
+
+            keyDataSize += keyElemTernary->value.size() +
+                                 keyElemTernary->mask.size();
+
+            // copy in the value
+            for (auto byte : keyElemTernary->value) {
+                *data++ = byte;
+            }
+
+            // copy in the mask
+            for (auto byte : keyElemTernary->mask) {
+                *data++ = byte;
+            }
+            break;
+        }
+
+        case ::np4::info::MatchEngineType::LPM: {
+            auto keyElemLPM = 
+                reinterpret_cast<const ::np4::KeyElemLPM *>(keyElem);
+
+            keyDataSize = keyElemLPM->value.size() + sizeof(uint32_t);
+
+            // copy in the value
+            for (auto byte : keyElemLPM->value) {
+                *data++ = byte;
+            }
+
+            // copy in the prefix length
+            data += emit_uint32(data, keyElemLPM->prefixLength);
+            break;
+        }
+
+        case ::np4::info::MatchEngineType::Exact: {
+
+            keyDataSize = keyElem->value.size();
+
+            // copy in the value
+            for (auto byte : keyElem->value) {
+                *data++ = byte;
+            }
+            break;
+        }
+
+        default:
+            Logger::get()->error("Key type {} not handled",
+                                 std::to_string(keyElem->type));
+            return nullptr;
+        }
+        Logger::get()->debug("CopyKeyData keyElem {} size {}", 
+                             keyElem->name, keyDataSize);
+    }
+    Logger::get()->debug("CopyKeyData data size {}", (data - start));
+
+    return data;
 }
 
 // @brief Copy in the rule to the given data pointer
 //
 // @param[in]   info        P4 Info
+// @param[in]   table       Table reference
 // @param[in]   data        pointer to the destination space
 // @param[in]   ruleIndex   index of the rule to copy
 // @param[in]   actionMap   Action map that gives us the sizes of actions
@@ -410,80 +621,57 @@ char *CopyActionData(const pi_p4info_t *info,
 // @return      Function returns the incremented data pointer
 //
 char *CopyRuleData(const pi_p4info_t *info,
+                   pi_p4_id_t table_id,
+                   ::np4::Table& table,
                    char *data,
                    size_t ruleIndex,
-                   ActionMap& actionMap,
-                   const ::np4::Rule& rule) {
+                   ActionMap& actionMap) {
 
 
-        // Entry rule number
-		data += emit_entry_handle(data, ruleIndex);
+    char *start = data;
 
-		// We don't have priority yet
-		data += emit_uint32(data, 0); // priority
+    // Grab the rule
+    ::np4::Rule rule;
+    try {
+        rule = table.getRule(ruleIndex);
 
-        // Go through each key element
-        for (auto keyElem : rule.key) {
+    // Table is sparsely populated so should be ok
+    } catch (::np4::Exception &e) {
+        Logger::get()->debug("rule fetch failed on index {}: {}",
+                                 ruleIndex, e.what());
+        return data;
+    }
 
-			switch (keyElem->type) {
-			case ::np4::info::MatchEngineType::Ternary: {
-                ::np4::KeyElemTernary* keyElemTernary = 
-                    reinterpret_cast<::np4::KeyElemTernary*>(keyElem);
+    // Entry rule number
+    pi_entry_handle_t handle(ruleIndex);
+    data += emit_entry_handle(data, handle);
 
-                // copy in the value
-                for (auto byte : keyElemTernary->value) {
-                    *data++ = byte;
-                }
-				data += keyElemTernary->value.size();
+    // We don't have priority yet
+    data += emit_uint32(data, 0); // priority
 
-                // copy in the mask
-                for (auto byte : keyElemTernary->mask) {
-                    *data++ = byte;
-                }
-				data += keyElemTernary->mask.size();
-				break;
-            }
+    // Copy the key data
+    data = CopyKeyData(info, data, table_id, rule.key);
+    if (data == nullptr) {
+        Logger::get()->error("CopyRuleData failed to copy key data");
+        return nullptr;
+    }
 
-			case ::np4::info::MatchEngineType::LPM: {
-                auto keyElemLPM = 
-                    reinterpret_cast<::np4::KeyElemLPM *>(keyElem);
+    // Our actions are always direct
+    data += emit_action_entry_type(data, PI_ACTION_ENTRY_TYPE_DATA);
+    auto actionProperties = actionMap.at(rule.action.name);
 
-                // copy in the value
-                for (auto byte : keyElemLPM->value) {
-                    *data++ = byte;
-                }
-				data += keyElemLPM->value.size();
+    data += emit_p4_id(data, actionProperties.id);
+    data += emit_uint32(data, actionProperties.size);
+    data = CopyActionData(info, data, actionProperties.id, rule.action);
+    if (data == nullptr) {
+        Logger::get()->error("CopyRuleData failed to copy action data");
+        return nullptr;
+    }
 
-                // copy in the prefix length
-				data += emit_uint32(data, keyElemLPM->prefixLength);
-				break;
-            }
+    data += emit_uint32(data, 0);  // properties
+    data += emit_uint32(data, 0);  // TODO(antonin): direct resources
 
-			case ::np4::info::MatchEngineType::Exact: {
-                // copy in the value
-                for (auto byte : keyElem->value) {
-                    *data++ = byte;
-                }
-				data += keyElem->value.size();
-				break;
-            }
-
-            default:
-                Logger::get()->error("Key type {} not handled",
-                                     std::to_string(keyElem->type));
-			}
-		}
-
-		// Our actions are always direct
-		data += emit_action_entry_type(data, PI_ACTION_ENTRY_TYPE_DATA);
-		auto actionProperties = actionMap.at(rule.action.name);
-
-		data += emit_p4_id(data, actionProperties.id);
-		data += emit_uint32(data, actionProperties.size);
-		data = CopyActionData(info, data, actionProperties.id, rule.action);
-
-		data += emit_uint32(data, 0);  // properties
-		data += emit_uint32(data, 0);  // TODO(antonin): direct resources
+    Logger::get()->debug("CopyRuleData data size {}", (data - start));
 
     return data;
 }
@@ -516,6 +704,15 @@ pi_status_t Tables::EntryAdd(pi_dev_id_t dev_id, pi_p4_id_t table_id,
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
+    // Retrieve table name
+    const char* tableName = pi_p4info_table_name_from_id(info, table_id);
+    if (tableName == nullptr) {
+        Logger::get()->error("Dev {}: table id {} not found in P4 Info",
+                             dev_id, table_id);
+        return PI_STATUS_INVALID_ENTRY_PROPERTY;
+    }
+    Logger::get()->trace("Dev {}: EntryAdd table {}", dev_id, tableName);
+
     // Now create the rule
     ::np4::Rule rule;
 
@@ -526,14 +723,6 @@ pi_status_t Tables::EntryAdd(pi_dev_id_t dev_id, pi_p4_id_t table_id,
     // Add Action
     status = AddAction(info, table_entry->entry.action_data, rule.action); 
     if (status != PI_STATUS_SUCCESS) return status;
-
-    // Retrieve table name
-    const char* tableName = pi_p4info_table_name_from_id(info, table_id);
-    if (tableName == nullptr) {
-        Logger::get()->error("Dev {}: table id {} not found in P4 Info",
-                             dev_id, table_id);
-        return PI_STATUS_INVALID_ENTRY_PROPERTY;
-    }
 
     // Now insert the rule
     size_t ruleIndex = 0;
@@ -574,7 +763,8 @@ pi_status_t Tables::EntryAdd(pi_dev_id_t dev_id, pi_p4_id_t table_id,
     }
 
     Logger::get()->debug("rule inserted at index {}", ruleIndex);
-    *entry_handle = ruleIndex;
+    pi_entry_handle_t handle(ruleIndex);
+    *entry_handle = handle;
 
     return PI_STATUS_SUCCESS;
 }
@@ -597,6 +787,16 @@ pi_status_t Tables::DefaultActionSet(pi_dev_id_t dev_id,
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
+    // Retrieve table name
+    const char* tableName = pi_p4info_table_name_from_id(info, table_id);
+    if (tableName == nullptr) {
+        Logger::get()->error("Dev {}: table id {} not found in P4 Info",
+                             dev_id, table_id);
+        return PI_STATUS_INVALID_ENTRY_PROPERTY;
+    }
+    Logger::get()->trace("Dev {}: DefaultActionSet table {}",
+                         dev_id, tableName);
+
     // Now create the rule
     ::np4::Action action;
 
@@ -605,14 +805,6 @@ pi_status_t Tables::DefaultActionSet(pi_dev_id_t dev_id,
     if ((status = AddAction(info, table_entry->entry.action_data, action)) 
                                                         != PI_STATUS_SUCCESS) {
         return pi_status_t(PI_STATUS_TARGET_ERROR + status);
-    }
-
-    // Retrieve table name
-    const char* tableName = pi_p4info_table_name_from_id(info, table_id);
-    if (tableName == nullptr) {
-        Logger::get()->error("Dev {}: table id {} not found in P4 Info",
-                             dev_id, table_id);
-        return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
     // Now set the default action
@@ -664,6 +856,8 @@ pi_status_t Tables::DefaultActionReset(pi_dev_id_t dev_id,
                              dev_id, table_id); 
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
+    Logger::get()->trace("Dev {}: DefaultActionReset table {}",
+                         dev_id, tableName);
 
     // Now reset the default action
     try {
@@ -715,6 +909,8 @@ pi_status_t Tables::DefaultActionGet(pi_dev_id_t dev_id,
                              dev_id, table_id); 
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
+    Logger::get()->trace("Dev {}: DefaultActionGet table {}",
+                         dev_id, tableName);
 
     // Now get the default action
     ::np4::Action action;
@@ -732,7 +928,42 @@ pi_status_t Tables::DefaultActionGet(pi_dev_id_t dev_id,
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
-    return RetrieveEntry(info, action, table_entry);;
+    // Allocate space for the action data
+    const pi_p4_id_t actionId = 
+        pi_p4info_action_id_from_name(info, action.name.c_str());
+    const size_t actionDataSize = pi_p4info_action_data_size(info, actionId);
+
+    table_entry->entry_type = PI_ACTION_ENTRY_TYPE_DATA;
+
+    char *data = new char[sizeof(pi_action_data_t) + actionDataSize];
+    if (data == NULL) {
+        Logger::get()->error("Deve {}: defatul action data alloc failed",
+                             dev_id);
+        return PI_STATUS_ALLOC_ERROR;
+    }
+    char *start = data;
+    char *end = data + sizeof(pi_action_data_t) + actionDataSize;
+    pi_action_data_t *actionData = (pi_action_data_t *)(data);
+    data += sizeof(pi_action_data_t);
+
+    actionData->p4info = info;
+    actionData->action_id = actionId;
+    actionData->data_size = actionDataSize;
+    actionData->data = data;
+
+    table_entry->entry.action_data = actionData;
+
+    data = CopyActionData(info, data, actionId, action);
+    if (data == nullptr) {
+        Logger::get()->error("CopyRuleData failed to copy action data");
+        delete[] data;
+        return PI_STATUS_ALLOC_ERROR;
+    }
+    // Check we haven't overrun our data buffer
+    assert(end >= data);
+    Logger::get()->debug("DefaultActionGet data size {}", (data - start));
+
+    return PI_STATUS_SUCCESS;
 }
 
 pi_status_t Tables::DefaultActionGetHandle(pi_dev_id_t dev_id,
@@ -760,6 +991,8 @@ pi_status_t Tables::DefaultActionGetHandle(pi_dev_id_t dev_id,
                              dev_id, table_id);
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
+    Logger::get()->trace("Dev {}: DefaultActionGetHandle table {}",
+                         dev_id, tableName);
 
     // Get the max table capacity and return as the
     // default action rule index
@@ -777,7 +1010,8 @@ pi_status_t Tables::DefaultActionGetHandle(pi_dev_id_t dev_id,
     Logger::get()->debug("Dev {}: Table {}: default action ruleIndex is: {}",
                          dev_id, tableName, ruleIndex);
 
-    *entry_handle = ruleIndex;
+    pi_entry_handle_t handle(ruleIndex);
+    *entry_handle = handle;
 
     return PI_STATUS_SUCCESS;
 }
@@ -807,6 +1041,8 @@ pi_status_t Tables::EntryDelete(pi_dev_id_t dev_id,
                              dev_id, table_id); 
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
+    Logger::get()->trace("Dev {}: EntryDelete table {} index {}",
+                         dev_id, tableName, ruleIndex);
 
     // Now delete rule
     try {
@@ -858,6 +1094,8 @@ pi_status_t Tables::EntryDeleteWKey(pi_dev_id_t dev_id,
                              dev_id, table_id);
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
+    Logger::get()->trace("Dev {}: EntryDeleteWKey table {}",
+                         dev_id, tableName);
 
     // Add Key
     ::np4::Key key;
@@ -902,6 +1140,16 @@ pi_status_t Tables::EntryModify(pi_dev_id_t dev_id,
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
+    // Retrieve table name
+    const char* tableName = pi_p4info_table_name_from_id(info, table_id);
+    if (tableName == nullptr) {
+        Logger::get()->error("Dev {}: table id {} not found in P4 Info",
+                              dev_id, table_id);
+        return PI_STATUS_INVALID_ENTRY_PROPERTY;
+    }
+    Logger::get()->trace("Dev {}: EntryModify table {}, index {}",
+                         dev_id, tableName, ruleIndex);
+
     // Create an actio
     ::np4::Action action;
 
@@ -910,14 +1158,6 @@ pi_status_t Tables::EntryModify(pi_dev_id_t dev_id,
     if ((status = AddAction(info, table_entry->entry.action_data, action)) 
                                                     != PI_STATUS_SUCCESS) {
         return pi_status_t(PI_STATUS_TARGET_ERROR + status);
-    }
-
-    // Retrieve table name
-    const char* tableName = pi_p4info_table_name_from_id(info, table_id);
-    if (tableName == nullptr) {
-        Logger::get()->error("Dev {}: table id {} not found in P4 Info",
-                              dev_id, table_id);
-        return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
     // Now modify rule
@@ -971,6 +1211,8 @@ pi_status_t Tables::EntryModifyWKey(pi_dev_id_t dev_id,
                              dev_id, table_id);
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
+    Logger::get()->trace("Dev {}: EntryModifyWKey table {}",
+                         dev_id, tableName);
 
     // Add Key
     ::np4::Key key;
@@ -1021,13 +1263,15 @@ pi_status_t Tables::EntryFetch(pi_dev_id_t dev_id,
                              dev_id, table_id); 
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
+    Logger::get()->trace("Dev {}: EntryFetch table {}",
+                         dev_id, tableName);
 
     // Grab the table reference and table size and capacity
     ::np4::Table& table = dev->GetP4Atom().getTable(tableName);
+    size_t tableSize = 0;
     size_t maxRuleIndex = 0;
     try {
-
-	    res->num_entries = table.getSize();
+        tableSize = table.getSize();
         maxRuleIndex = table.getCapacity();
 
     // Couldn't find entry
@@ -1036,40 +1280,250 @@ pi_status_t Tables::EntryFetch(pi_dev_id_t dev_id,
                              dev_id, tableName, e.what());
         return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_KEY_NAME_ERROR);
     }
+    Logger::get()->info("Dev {}: EntryFetch size: {}, capacity: {}",
+                        dev_id, tableSize,  maxRuleIndex);
+
+    // fetch all the entries
+    res->num_entries = tableSize;
+
+    // return if got no entries
+    if (tableSize == 0) {
+        Logger::get()->info("Dev {}: no entries, returning now", dev_id);
+        return PI_STATUS_SUCCESS;
+    }
 
     // Calculate space needed
     ActionMap actionMap;
-    size_t dataSize = CalcRuleDataSize(info, table_id, table,
-                                       maxRuleIndex, actionMap, res);
+    size_t dataSize = CalcTableDataSize(info, table_id, table, 0,
+                                        actionMap, res);
+    if (dataSize == 0) {
+        Logger::get()->error("Dev {}: Calc of rule size failed", dev_id);
+        return PI_STATUS_ALLOC_ERROR;
+    }
 
     // Now allocate the space
-	char *data = new char[dataSize];
-	if (data == NULL) return PI_STATUS_ALLOC_ERROR;
+    char *data = new char[dataSize];
+    if (data == NULL) {
+        Logger::get()->error("Dev {}: alloc of fetch space failed", dev_id);
+        return PI_STATUS_ALLOC_ERROR;
+    }
+    char *start = data;
+    char *end = data + dataSize;
 
-	// in some cases, we do not use the whole buffer
-	std::fill(data, data + dataSize, 0);
-	res->entries_size = dataSize;
-	res->entries = data;
+    // in some cases, we do not use the whole buffer
+    std::fill(data, data + dataSize, 0);
+    res->entries_size = dataSize;
+    res->entries = data;
 
     // Dump each rule into the reserved table data
-    size_t ruleIndex = 0;
-	for (uint32_t i = 0; i < res->num_entries; i++) {
-
-        // Grab the rule
-        ::np4::Rule rule;
-        try {
-            rule = table.getRule(ruleIndex);
-
-
-        // Table is sparsely populated so should be ok
-        } catch (::np4::Exception &e) {
-            Logger::get()->error("Dev {}: rule fetch failed on index {}: {}",
-                                 dev_id, ruleIndex, e.what());
-        }
+    size_t got = 0;
+    for (size_t ruleIndex = 0; ruleIndex < maxRuleIndex; ruleIndex++) {
 
         // Copy in the rule data
-        data = CopyRuleData(info, data, ruleIndex, actionMap, rule);
-	}
+        char *tmp = CopyRuleData(info, table_id, table, data,
+                                 ruleIndex, actionMap);
+        if (tmp == nullptr) {
+            Logger::get()->error("Dev {}: failed to copy rule data",
+                                 dev_id);
+            return PI_STATUS_TARGET_ERROR;
+
+        // zero increase means rule get failed, which is ok because
+        // it's a sparse table.
+        } else if (tmp != data) {
+
+            // increment data ptr
+            data = tmp;
+
+            // Have we got enough
+            if (++got == tableSize) break;
+        }
+    }
+    // Check to make sure we got tableSize entries
+    if (got < res->num_entries) {
+        Logger::get()->warn("Dev {}: only found {} out of {} entries",
+                            dev_id, got, res->num_entries);
+    }
+
+    Logger::get()->debug("EntryFetch data used/alloc {}/{}",
+                         (data - start), (end - start));
+
+    // Just make sure we didn't go over the end of the allocated data
+    assert(end >= data);
+
+    return PI_STATUS_SUCCESS;
+}
+
+pi_status_t Tables::EntryFetchOne(pi_dev_id_t dev_id,
+                                  pi_p4_id_t table_id,
+                                  size_t ruleIndex,
+                                  pi_table_fetch_res_t *res) {
+
+    // Check to make sure this device id is allocated
+    auto dev =  DeviceMgr::GetDevice(dev_id);
+    if (dev == nullptr) {
+        Logger::get()->error("Dev {}: not allocated", dev_id);
+        return PI_STATUS_DEV_NOT_ASSIGNED;
+    }
+
+    // Make sure we have P4 info
+    auto info = dev->GetP4Info();
+    if (info == nullptr) {
+        Logger::get()->error("Dev {}: no P4 Info", dev_id);
+        return PI_STATUS_DEV_NOT_ASSIGNED;
+    }
+
+    // Retrieve table name
+    const char* tableName = pi_p4info_table_name_from_id(info, table_id);
+    if (tableName == nullptr) {
+        Logger::get()->error("Dev {}: table id {} not found in P4 Info",
+                             dev_id, table_id); 
+        return PI_STATUS_INVALID_ENTRY_PROPERTY;
+    }
+    Logger::get()->trace("Dev {}: EntryFetchOne table {}",
+                         dev_id, tableName);
+
+    // Grab the table reference and table size and capacity
+    ::np4::Table& table = dev->GetP4Atom().getTable(tableName);
+
+    res->num_entries = 1;
+
+    // Calculate space needed
+    ActionMap actionMap;
+    size_t dataSize = CalcTableDataSize(info, table_id, table, ruleIndex,
+                                        actionMap, res);
+    if (dataSize == 0) {
+        Logger::get()->error("Dev {}: Calc of rule size failed", dev_id);
+        return PI_STATUS_ALLOC_ERROR;
+    }
+
+    // Now allocate the space
+    char *data = new char[dataSize];
+    if (data == NULL) {
+        Logger::get()->error("Dev {}: alloc of fetch space failed", dev_id);
+        return PI_STATUS_ALLOC_ERROR;
+    }
+    char *start = data;
+    char *end = data + dataSize;
+
+    // in some cases, we do not use the whole buffer
+    std::fill(data, data + dataSize, 0);
+    res->entries_size = dataSize;
+    res->entries = data;
+
+    char *tmp = CopyRuleData(info, table_id, table, data, ruleIndex, actionMap);
+    if (tmp == nullptr) {
+        Logger::get()->error("Dev {}: failed to copy rule data",
+                             dev_id);
+        return PI_STATUS_TARGET_ERROR;
+
+    // Else get of this index failed
+    } else if (tmp == data) {
+        Logger::get()->error("Dev {}: failed to get rule {}",
+                             dev_id, ruleIndex);
+        return PI_STATUS_OUT_OF_BOUND_IDX;
+    }
+    data = tmp;
+
+    Logger::get()->debug("EntryFetchOne data used/alloc {}/{}",
+                         (data - start), (end - start));
+
+    // Just make sure we didn't go over the end of the allocated data
+    assert(end >= data);
+
+    return PI_STATUS_SUCCESS;
+}
+
+pi_status_t Tables::EntryFetchWKey(pi_dev_id_t dev_id,
+                                   pi_p4_id_t table_id,
+                                   const pi_match_key_t *match_key,
+                                   pi_table_fetch_res_t *res) {
+
+    // Check to make sure this device id is allocated
+    auto dev =  DeviceMgr::GetDevice(dev_id);
+    if (dev == nullptr) {
+        Logger::get()->error("Dev {}: not allocated", dev_id);
+        return PI_STATUS_DEV_NOT_ASSIGNED;
+    }
+
+    // Make sure we have P4 info
+    auto info = dev->GetP4Info();
+    if (info == nullptr) {
+        Logger::get()->error("Dev {}: no P4 Info", dev_id);
+        return PI_STATUS_DEV_NOT_ASSIGNED;
+    }
+
+    // Retrieve table name
+    const char* tableName = pi_p4info_table_name_from_id(info, table_id);
+    if (tableName == nullptr) {
+        Logger::get()->error("Dev {}: table id {} not found in P4 Info",
+                             dev_id, table_id); 
+        return PI_STATUS_INVALID_ENTRY_PROPERTY;
+    }
+    Logger::get()->trace("Dev {}: EntryFetchWKey table {}",
+                         dev_id, tableName);
+
+    // Get Key
+    ::np4::Key key;
+    pi_status_t status;
+    if ((status = AddKey(info, table_id, match_key, key)) 
+                                            != PI_STATUS_SUCCESS) {
+        return pi_status_t(PI_STATUS_TARGET_ERROR + status);
+    }
+
+    // Grab the table reference and table size and capacity
+    ::np4::Table& table = dev->GetP4Atom().getTable(tableName);
+
+    // Grab the rule index
+    size_t ruleIndex = 0;
+    try {
+        ruleIndex = table.findRuleIndex(key);
+
+    // Table is sparsely populated so should be ok
+    } catch (::np4::Exception &e) {
+        Logger::get()->error("Dev {}: rule fetch failed on key: {}",
+                              dev_id, e.what());
+        return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_KEY_NAME_ERROR);
+    }
+
+    // Calculate space needed (we only need one rule)
+    ActionMap actionMap;
+    size_t dataSize = CalcTableDataSize(info, table_id, table, ruleIndex,
+                                        actionMap, res);
+
+    // Now allocate the space
+    char *data = new char[dataSize];
+    if (data == NULL) {
+        Logger::get()->error("Dev {}: alloc of fetch space failed", dev_id);
+        return PI_STATUS_ALLOC_ERROR;
+    }
+    char *start = data;
+    char *end = data + dataSize;
+
+    // in some cases, we do not use the whole buffer
+    std::fill(data, data + dataSize, 0);
+    res->entries_size = dataSize;
+    res->entries = data;
+
+    // Copy in the rule data
+    char *tmp = CopyRuleData(info, table_id, table, data, ruleIndex, actionMap);
+    if (tmp == nullptr) {
+        Logger::get()->error("Dev {}: failed to copy rule data",
+                             dev_id);
+        return PI_STATUS_TARGET_ERROR;
+
+    // Else get on this index failed
+    } else if (tmp == data) {
+        Logger::get()->error("Dev {}: failed to get rule {}",
+                             dev_id, ruleIndex);
+        return PI_STATUS_OUT_OF_BOUND_IDX;
+    }
+    data = tmp;
+
+    Logger::get()->debug("EntryFetchWKey data used/alloc {}/{}",
+                         (data - start), (end - start));
+
+    // Just make sure we didn't go over the end of the allocated data
+    assert(end >= data);
 
     return PI_STATUS_SUCCESS;
 }

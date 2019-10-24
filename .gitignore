@@ -71,3 +71,4 @@ bazel-*
 
 # Ignore swap files
 *.swp
+*.swo

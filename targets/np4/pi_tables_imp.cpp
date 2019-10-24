@@ -195,13 +195,12 @@ pi_status_t _pi_table_entries_fetch_one(pi_session_handle_t session_handle,
                                         pi_p4_id_t table_id,
                                         pi_entry_handle_t entry_handle,
                                         pi_table_fetch_res_t *res) {
-  (void)session_handle;
-  (void)dev_id;
-  (void)table_id;
-  (void)entry_handle;
-  (void)res;
 
-  return PI_STATUS_NOT_IMPLEMENTED_BY_TARGET;
+	(void)(session_handle);
+    Logger::get()->trace("PI_table_entries_fetch_one");
+
+    const std::size_t ruleIndex(entry_handle);
+    return pi::np4::Tables::EntryFetchOne(dev_id, table_id, ruleIndex, res);
 }
 
 pi_status_t _pi_table_entries_fetch_wkey(pi_session_handle_t session_handle,
@@ -209,13 +208,16 @@ pi_status_t _pi_table_entries_fetch_wkey(pi_session_handle_t session_handle,
                                          pi_p4_id_t table_id,
                                          const pi_match_key_t *match_key,
                                          pi_table_fetch_res_t *res) {
-  (void)session_handle;
-  (void)dev_tgt;
-  (void)table_id;
-  (void)match_key;
-  (void)res;
+    (void)session_handle;
+    (void)dev_tgt;
+    (void)table_id;
+    (void)match_key;
+    (void)res;
 
-  return PI_STATUS_NOT_IMPLEMENTED_BY_TARGET;
+    Logger::get()->trace("PI_table_entries_fetch_wkey");
+
+    return pi::np4::Tables::EntryFetchWKey(dev_tgt.dev_id, table_id, 
+                                           match_key, res);
 }
 
 //! Need to be called after a pi_table_entries_fetch, once you wish the memory
