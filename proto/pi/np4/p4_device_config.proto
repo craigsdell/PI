@@ -46,6 +46,7 @@ message DPDKConfig {
   uint32 num_mbufs = 6;
   uint32 mbuf_cache_size = 7;
   uint32 burst_size = 8;
+  bool disabled = 9;
 }
 
 message P4DeviceConfig {

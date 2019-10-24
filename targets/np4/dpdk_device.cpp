@@ -61,6 +61,12 @@ pi_status_t DPDKDevice::PortInit(const ::pi::np4::DPDKConfig& config) {
     int retval;
     uint16_t q;
 
+    std::unique_lock<std::mutex> lock(mutex);
+    if (port_initialized_) {
+        Logger::get()->error("Dev {}: port already initialized", dev_id_);
+        return PI_STATUS_TARGET_ERROR;
+    }
+
     dev_name_ = config.device_name();
 
     // Find port id first
@@ -122,13 +128,16 @@ pi_status_t DPDKDevice::PortInit(const ::pi::np4::DPDKConfig& config) {
     Logger::get()->info("Dev {}: Port init port {}: device name {}",
            dev_id_, port, dev_info_.device->name);
 
-    /* Configure the Ethernet device. */
+    // Configure the Ethernet device.
     retval = rte_eth_dev_configure(port_, rx_rings_, tx_rings_, &port_conf_);
     if (retval != 0) {
         Logger::get()->error("Dev {}: config eth failed: {}",
                              dev_id_, rte_errno);
         return pi_status_t(PI_STATUS_TARGET_ERROR + retval);
     }
+
+    // enable promiscous mode
+    rte_eth_promiscuous_enable(port_);
 
     retval = rte_eth_dev_adjust_nb_rx_tx_desc(port_, &nb_rxd_, &nb_txd_);
     if (retval != 0) {
@@ -195,6 +204,8 @@ pi_status_t DPDKDevice::PortInit(const ::pi::np4::DPDKConfig& config) {
     // Enable RX in promiscuous mode for the Ethernet device. 
     rte_eth_promiscuous_enable(port);
 
+    port_initialized_ = true;
+
     return PI_STATUS_SUCCESS;
 }
 
@@ -213,16 +224,21 @@ void DPDKDevice::ClearStats() {
 
 pi_status_t DPDKDevice::PortFree() {
 
-    // Stop device
-    rte_eth_dev_stop(port_);
+    std::unique_lock<std::mutex> lock(mutex);
+    if (port_initialized_) {
+        // Stop device
+        rte_eth_dev_stop(port_);
 
-    // Free up memory
-    delete[] pktin_data_;
-    delete[] pktin_bufs_;
+        // Free up memory
+        delete[] pktin_data_;
+        delete[] pktin_bufs_;
 
-    // Free mbuf pool
-    rte_mempool_free(mbuf_pool_);
-    mbuf_pool_ = nullptr;
+        // Free mbuf pool
+        rte_mempool_free(mbuf_pool_);
+        mbuf_pool_ = nullptr;
+
+        port_initialized_ = false;
+    }
 
     return PI_STATUS_SUCCESS;
 }

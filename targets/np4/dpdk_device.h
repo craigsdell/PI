@@ -121,6 +121,7 @@ class DPDKDevice {
     std::thread recv_thread{};
     bool stop_recv_thread_{false};
     mutable std::mutex mutex{};
+    bool port_initialized_{false};
 
     // DPDK mbuf and device info
     uint16_t nb_rxd_{0};            // rx ring size

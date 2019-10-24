@@ -102,13 +102,22 @@ pi_status_t Device::LoadDevice(const char *data, size_t size) {
     }
     Logger::get()->debug("Dev {}: sync atoms is {}", dev_id_, sync_atoms_);
 
-    // Allocate DPDK port
+    // Grab DPDK config
     auto dpdk_config = device_config.dpdk_config();
-    dpdk_dev_ = DPDKDevice::CreateInstance(dev_id_, dpdk_config);
-    if (dpdk_dev_ == nullptr) {
-        Logger::get()->error("Failed to create DPDK Device for {}",
-                             dpdk_config.device_name());
-        return PI_STATUS_TARGET_ERROR;
+
+    // Don't allocate DPDK port if disabled
+    if (dpdk_config.disabled()) {
+        Logger::get()->info("Dev {}: DPDK port is disabled", dev_id_);
+        dpdk_dev_ = nullptr;
+
+    // Only allocate if enabled
+    } else {
+        dpdk_dev_ = DPDKDevice::CreateInstance(dev_id_, dpdk_config);
+        if (dpdk_dev_ == nullptr) {
+            Logger::get()->error("Failed to create DPDK Device for {}",
+                                dpdk_config.device_name());
+            return PI_STATUS_TARGET_ERROR;
+        }
     }
 
     // TODO: 
@@ -126,7 +135,7 @@ pi_status_t Device::Start() {
     Reset();
 
     // Start the DPDK PMD PacketIn receievers
-    dpdk_dev_->Start();
+    if (dpdk_dev_) dpdk_dev_->Start();
 
     return PI_STATUS_SUCCESS;
 }
@@ -151,7 +160,7 @@ pi_status_t Device::Stop() {
     // Do we need to do anything for NP4 device? 
 
     // Stop the DPDK PMD
-    dpdk_dev_->Stop();
+    if (dpdk_dev_) dpdk_dev_->Stop();
 
     return PI_STATUS_SUCCESS;
 }
@@ -159,7 +168,8 @@ pi_status_t Device::Stop() {
 pi_status_t Device::PacketOut(const char *pkt, size_t size) {
     Logger::get()->trace("Dev {}: PacketOut, size {}", dev_id_, size);
 
-    return dpdk_dev_->PacketOut(pkt, size);
+    if (dpdk_dev_) return dpdk_dev_->PacketOut(pkt, size);
+    else return PI_STATUS_TARGET_ERROR;
 }
 
 }   // np4
