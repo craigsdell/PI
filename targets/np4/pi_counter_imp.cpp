@@ -21,6 +21,7 @@
 #include <PI/p4info.h>
 #include <PI/pi.h>
 #include <PI/target/pi_counter_imp.h>
+#include <thread>
 #include "counter.h"
 
 extern "C" {
@@ -99,12 +100,10 @@ pi_status_t _pi_counter_hw_sync(pi_session_handle_t session_handle,
                                 PICounterHwSyncCb cb, void *cb_cookie) {
 
 	(void)(session_handle);
-	(void)(dev_tgt);
-	(void)(counter_id);
-	(void)(cb);
-	(void)(cb_cookie);
-	
-	return PI_STATUS_NOT_IMPLEMENTED_BY_TARGET;
+    if (!cb) return PI_STATUS_SUCCESS;
+    std::thread cb_thread(cb, dev_tgt.dev_id, counter_id, cb_cookie);
+    cb_thread.detach();
+    return PI_STATUS_SUCCESS;
 }
 
 }
