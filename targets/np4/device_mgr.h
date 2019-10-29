@@ -26,6 +26,8 @@
 namespace pi {
 namespace np4 {
 
+extern bool dpdk_initialized_;
+
 // @brief   The Device Manager class for the PI NP4 implementation
 //
 //  This class provides wrappers to access the NP4 and Packet In/Out DPDK

@@ -135,13 +135,16 @@ class DPDKDevice {
     struct rte_eth_dev_info dev_info_;
     struct rte_eth_txconf txconf_;
     struct rte_eth_conf port_conf_{};
+
+    struct rte_ether_hdr pktout_hdr_;
     struct rte_mbuf** pktin_bufs_;
-    char* pktin_data_{nullptr};
+    char* pktin_data_;
 
     // stats
     uint64_t pktin_errors;
     uint64_t pktin_rx_errors;
     uint64_t pktin_too_big;
+    uint64_t pktin_too_small;
     uint64_t pktin_success;
     uint64_t pktout_too_big;
     uint64_t pktout_tx_errors;

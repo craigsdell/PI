@@ -181,6 +181,10 @@ pi_status_t DPDKDevice::PortInit(const ::pi::np4::DPDKConfig& config) {
         Logger::get()->error("Dev {}: failed to alloc pktin data", dev_id_);
         return PI_STATUS_ALLOC_ERROR;
     }
+    // Setup dummy packet_out ethernet header
+    rte_ether_unformat_addr("00:00:01:00:00:01", &(pktout_hdr_.s_addr));
+    rte_ether_unformat_addr("00:00:02:00:00:02", &(pktout_hdr_.d_addr));
+    pktout_hdr_.ether_type = RTE_ETHER_TYPE_MPLS;
 
     // Start the Ethernet port.
     retval = rte_eth_dev_start(port_);
@@ -309,7 +313,18 @@ pi_status_t DPDKDevice::PacketIn() {
             }
 
             // Copy the packet from the DPDK mbuf
-            rte_pktmbuf_read(m, 0, size, (void *)pktin_data_);
+            size_t eth_size = sizeof(struct rte_ether_hdr);
+            // We need at least ethernet header and 2 byte metadata
+            if (size < eth_size+2) {
+                Logger::get()->error("Dev {}: mbuff too short: {}", 
+                                     dev_id_, size);
+                pktin_too_small++;
+                return PI_STATUS_TARGET_ERROR;
+            }
+
+            // Copy in the packet minus the dummy eth header
+            rte_memcpy(pktin_data_, rte_pktmbuf_mtod_offset(
+                m, void *, eth_size), (size - eth_size));
 
             // Free the mbuf
             rte_pktmbuf_free(m);
@@ -339,21 +354,25 @@ pi_status_t DPDKDevice::PacketOut(const char* pkt, size_t size) {
     }
 
     // Check not bigger than MBuf len
-    if (size > RTE_MBUF_DEFAULT_BUF_SIZE) {
+    if (size+sizeof(rte_ether_hdr) > RTE_MBUF_DEFAULT_BUF_SIZE) {
         Logger::get()->error("Dev {}: PacketOut {} bigger than MBuf {}", 
                              dev_id_, size, RTE_MBUF_DEFAULT_BUF_SIZE);
         pktout_too_big++;
         return PI_STATUS_TARGET_ERROR;
     }
 
-    // copy packet into mbuf
+    // get a new mbuf
     struct rte_mbuf* m = rte_pktmbuf_alloc(mbuf_pool_);
     if (m == nullptr) {
         Logger::get()->error("Dev {}: mbuf alloc failed", dev_id_);
         pktout_alloc_fails++;
         return PI_STATUS_TARGET_ERROR;
     }
-    rte_memcpy(rte_pktmbuf_mtod(m, void *), pkt, size);
+    // Copy dummy ethernet header first
+    size_t offset = sizeof(rte_ether_hdr);
+    rte_memcpy(rte_pktmbuf_mtod(m, void *), &pktout_hdr_, offset);
+    // copy packet into mbuf
+    rte_memcpy(rte_pktmbuf_mtod_offset(m, void *, offset), pkt, size);
     m->pkt_len = size;
     m->data_len = size;
 

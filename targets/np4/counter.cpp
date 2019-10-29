@@ -42,19 +42,21 @@ void AddCounterValues(::np4::CounterValue& value,
 
     // Copy in packet value
     data = (char *)&packets;
-    offset = sizeof(packets) - value.packets.size();
-    std::memset(data, 0, offset);
+    offset = value.packets.size();
+    std::memset(&data[offset], 0, (sizeof(packets) - value.packets.size()));
+    // Need to byte swap them
     for (auto byte : value.packets) {
-        data[offset++] = byte;
+        data[--offset] = byte;
     }
     *totalPackets += packets;
 
     // Copy in bytes value
     data = (char *)&bytes;
-    offset = sizeof(bytes) - value.bytes.size();
-    std::memset(data, 0, offset);
+    offset = value.bytes.size();
+    std::memset(&data[offset], 0, (sizeof(bytes) - value.bytes.size()));
+    // Need to byte swap them
     for (auto byte : value.bytes) {
-        data[offset++] = byte;
+        data[--offset] = byte;
     }
     *totalBytes += bytes;
 }
@@ -72,6 +74,7 @@ pi_status_t Counter::Read(pi_dev_id_t dev_id,
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
+        Logger::get()->error("Dev {}: not allocated", dev_id);
         return PI_STATUS_DEV_NOT_ASSIGNED;
     }
 
@@ -113,10 +116,12 @@ pi_status_t Counter::Read(pi_dev_id_t dev_id,
         }
 
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: read counter failed: {}",
-                             dev_id, e.what());
+        Logger::get()->error("Dev {}: read counter {} failed: {}",
+                             dev_id, counterName, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
+    Logger::get()->debug("Counter::Read pkts {} bytes {}",
+                         totalPackets, totalBytes);
 
 	counter_data->valid = PI_COUNTER_UNIT_PACKETS | PI_COUNTER_UNIT_BYTES;
     counter_data->packets = totalPackets;

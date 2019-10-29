@@ -15,6 +15,7 @@
 
 #include <memory>
 #include "device.h"
+#include "device_mgr.h"
 #include "proto/frontend/src/logger.h"
 #include "p4dev.h"
 #include "pi/np4/p4_device_config.pb.h"
@@ -106,7 +107,7 @@ pi_status_t Device::LoadDevice(const char *data, size_t size) {
     auto dpdk_config = device_config.dpdk_config();
 
     // Don't allocate DPDK port if disabled
-    if (dpdk_config.disabled()) {
+    if (!dpdk_initialized_ || dpdk_config.disabled()) {
         Logger::get()->info("Dev {}: DPDK port is disabled", dev_id_);
         dpdk_dev_ = nullptr;
 
