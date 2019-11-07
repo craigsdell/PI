@@ -19,6 +19,9 @@
 #include "tables.h"
 #include "proto/frontend/src/logger.h"
 #include "device_mgr.h"
+#include <iostream>
+#include <sstream>
+#include <iomanip>
 
 using pi::fe::proto::Logger;
 
@@ -26,6 +29,114 @@ namespace pi {
 namespace np4 {
 
 //---------------- Table Helper functions ---------------------------
+
+// @brief Helper function to return a string representation of the 
+//        given vector of uint8_t values.
+//
+// @param[in]   values      vector of uint8_t values
+// @param[in]   hex         Print in hex flag (optional)
+// return       Returns a string representation of the vector
+//
+std::string
+StringValues(std::vector<uint8_t> values, bool hex=false)
+{
+    std::string str;
+    std::stringstream st;
+
+    st << "(";
+    if (hex)
+        st << std::setfill('0') << std::setw(2) << std::hex;
+
+    for (size_t i=0; i < values.size(); i++) {
+        if (i != 0) st << ", ";
+        st << (int)values[i];
+    } 
+    st << ")";
+
+    return st.str();
+}
+
+// @brief Helper function to return a string representation of the 
+//        given data bytes
+//
+// @param[in]   data        bit field
+// @param[in]   len         length of the data
+// return       Returns a hex string representation of the data
+//
+std::string
+StringData(const char* data, size_t len)
+{
+    const uint8_t *udata = reinterpret_cast<const uint8_t *>(data);
+    std::string str;
+    std::stringstream st;
+
+    st << "0x";
+    st << std::setfill('0') << std::hex;
+
+    for (size_t i=0; i < len; i++) {
+        st << std::setw(2) << (int)udata[i];
+    } 
+
+    return st.str();
+}
+
+// @brief Helper function to convert a bit field to a vector of uint8_t values
+//
+// @param[in]   data        data field
+// @param[in]   bitwidth    bit width of the data field
+// @param[in]   values      vector of uint8_t values
+// return       Returns a string representation of the vector
+//
+size_t Bitfield2Vector(const char* data, size_t bitwidth,
+                       std::vector<uint8_t>& values)
+{
+    const uint8_t *field = reinterpret_cast<const uint8_t *>(data);
+
+    size_t bytewidth = (bitwidth + 7) / 8;
+
+    // Apply bit mask to first byte
+    uint8_t bitshift = bitwidth%8;
+    uint8_t mask = 0xff;
+    // not byte aligned
+    if (bitshift != 0) mask = (1 << bitshift) - 1;
+
+    // push first byte with first byte bit mask
+    values.push_back(field[0] & mask);
+
+    // then grab the rest if any
+    for (size_t i=1; i < bytewidth; i++) {
+        values.push_back(field[i]);
+    }
+
+    return(bytewidth);
+}
+
+// @brief Helper function to convert a vector of uint8_t values to a bit field
+//
+// @param[in]   values      vector of uint8_t values
+// @param[in]   data        data field to be populated
+// @param[in]   bitwidth    bit width of the data field
+// return       Returns a string representation of the vector
+//
+size_t Vector2Bitfield(const std::vector<uint8_t>& values,
+                       char* data, size_t bitwidth)
+{
+    uint8_t *field = reinterpret_cast<uint8_t *>(data);
+
+    size_t bytewidth = (bitwidth + 7) / 8;
+    if (bytewidth < values.size()) {
+        Logger::get()->error("Vector2Bitfield bit field too small");
+        return 0;
+    }
+
+    // Clear whole bitfield
+    std::memset(field, 0, bytewidth);
+
+    for (size_t i=0; i < values.size(); i++)
+        field[i] = values[i];
+
+    return(bytewidth);
+}
 
 using ParamMap = std::unordered_map<size_t, const ::np4::Parameter&>;
 
@@ -72,7 +183,6 @@ KeyMap CreateKeyMap(const pi_p4info_t* info,
         size_t id = pi_p4info_table_match_field_id_from_name(info, table_id,
                                                         keyElem->name.c_str());
         kmap[id] = keyElem;
-        //kmap.insert(id, keyElem);
     }
     return kmap;
 }
@@ -96,8 +206,6 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
 
         const pi_p4info_match_field_info_t *fieldInfo = 
             pi_p4info_table_match_field_info(info, table_id, i);
-        size_t bitwidth = fieldInfo->bitwidth;
-        size_t bytewidth = (bitwidth + 7) / 8;
         uint32_t prefixLen;
         const char *keyName = 
             pi_p4info_table_match_field_name_from_id(info, table_id, 
@@ -112,18 +220,25 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
         case PI_P4INFO_MATCH_TYPE_EXACT: {
             // Create value vector
             std::vector<uint8_t> keyValue;
-            for (size_t i=0; i < bytewidth; i++) {
-                keyValue.push_back(*data++);
-            }
+            const char *keyData = data;
+            data += Bitfield2Vector(data, fieldInfo->bitwidth, keyValue);
 
             try {
                 // Create new key
                 key.push_back(new ::np4::KeyElemExact(keyName, keyValue));
-                Logger::get()->debug("adding Exact key {}", keyName);
+                Logger::get()->debug(
+                    "adding Exact key {}, width {}, data {}, vector {}",
+                    keyName, fieldInfo->bitwidth,
+                    StringData(keyData, (data - keyData)),
+                    StringValues(keyValue));
 
             } catch (::np4::Exception &e) {
                 Logger::get()->error(
-                    "error creating exact key {}: {}", keyName, e.what());
+                    "error creating exact key {}, width {}, data {},"
+                    " vector {}: {}",
+                    keyName, fieldInfo->bitwidth,
+                    StringData(keyData, (data - keyData)),
+                    StringValues(keyValue), e.what());
                 return pi_status_t(PI_STATUS_TARGET_ERROR + 
                                    P4DEV_KEY_NAME_ERROR);
             }
@@ -133,24 +248,30 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
         case PI_P4INFO_MATCH_TYPE_LPM: {
             // Create value vector
             std::vector<uint8_t> keyValue;
-            for (size_t i=0; i < bytewidth; i++) {
-                keyValue.push_back(*data++);
-            }
+            const char *keyData = data;
+            data += Bitfield2Vector(data, fieldInfo->bitwidth, keyValue);
 
             // Retrieve prefix length
             data += retrieve_uint32(data, &prefixLen);
-            // TODO: do we need this with the new ATOM library?
-            //flipEndianness(value, bytewidth);
 
             try {
                 // Create new key
                 key.push_back(new ::np4::KeyElemLPM(keyName, keyValue,
                                                        prefixLen));
-                Logger::get()->debug("adding LPM key {}", keyName);
+                Logger::get()->debug(
+                    "adding LPM key {}, width {}, data {}, vector {},"
+                    " prefix len {}",
+                    keyName, fieldInfo->bitwidth,
+                    StringData(keyData, (data - keyData)),
+                    StringValues(keyValue), prefixLen);
 
             } catch (::np4::Exception &e) {
-                Logger::get()->error("error creating lpm key {}: {}",
-                                     keyName, e.what());
+                Logger::get()->error(
+                    "error creating lpm key {}, width {}, data {},"
+                    " vector {}, prefix len {}: {}",
+                    keyName, fieldInfo->bitwidth,
+                    StringData(keyData, (data - keyData)),
+                    StringValues(keyValue), prefixLen, e.what());
                 return pi_status_t(PI_STATUS_TARGET_ERROR + 
                                    P4DEV_KEY_NAME_ERROR);
             }
@@ -160,27 +281,39 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
         case PI_P4INFO_MATCH_TYPE_TERNARY: {
             // Create value vector
             std::vector<uint8_t> keyValue;
-            for (size_t i=0; i < bytewidth; i++) {
-                keyValue.push_back(*data++);
-            }
+            const char *valueData = data;
+            data += Bitfield2Vector(data, fieldInfo->bitwidth, keyValue);
 
             // Create mask vector
             std::vector<uint8_t> keyMask;
-            for (size_t i=0; i < bytewidth; i++) {
-                keyMask.push_back(*data++);
-            }
+            const char *maskData = data;
+            data += Bitfield2Vector(data, fieldInfo->bitwidth, keyMask);
 
             try {
                 // Create new key
                 // - TODO: priority support
                 key.push_back(new ::np4::KeyElemTernary(keyName, keyValue, 
-                                                           keyMask));
+                                                        keyMask));
                 //*requires_priority = true;
-                Logger::get()->debug("adding Ternary key {}", keyName);
+                Logger::get()->debug(
+                    "adding Ternary key {}, bit width {}, value_data {}, "
+                    "value_vector {}, mask_data {}, mask_vector {}",
+                    keyName, fieldInfo->bitwidth,
+                    StringData(valueData, (maskData - valueData)),
+                    StringValues(keyValue),
+                    StringData(maskData, (data - maskData)),
+                    StringValues(keyMask));
 
             } catch (::np4::Exception &e) {
                 Logger::get()->error(
-                    "error creating ternary key {}: {}", keyName, e.what());
+                    "error creating ternary key {}, bit width {}, "
+                    "value_data {}, value_vector {}, mask_data {}, "
+                    "mask_vector {}: {}", keyName, fieldInfo->bitwidth,
+                    StringData(valueData, (maskData - valueData)),
+                    StringValues(keyValue),
+                    StringData(maskData, (data - maskData)),
+                    StringValues(keyMask), e.what());
+
                 return pi_status_t(PI_STATUS_TARGET_ERROR + 
                                    P4DEV_KEY_NAME_ERROR);
             }
@@ -213,12 +346,13 @@ pi_status_t AddAction(const pi_p4info_t *info,
                       ::np4::Action& action) {
 
     pi_p4_id_t actionID = action_data->action_id;
-    const char *actionData = action_data->data;
+    const char *data = action_data->data;
     const char *actionName = pi_p4info_action_name_from_id(info, actionID);
     if (actionName == nullptr) {
         Logger::get()->error("can't find action name from id {}", actionID);
         return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_ACTION_NAME_ERROR);
     }
+    Logger::get()->debug("AddAction {}({})", actionName, actionID);
 
     // Now add params
     std::vector<::np4::Parameter> params;
@@ -228,9 +362,8 @@ pi_status_t AddAction(const pi_p4info_t *info,
 
     for (size_t i = 0; i < paramIdsSize; i++) {
 
-        size_t paramBitwidth = 
+        size_t bitwidth = 
             pi_p4info_action_param_bitwidth(info, actionID, paramIds[i]);
-        size_t paramBytewidth = (paramBitwidth + 7) / 8;
 
         // Get param name
         const char *paramName = 
@@ -244,12 +377,16 @@ pi_status_t AddAction(const pi_p4info_t *info,
 
         // Create param value vector
         std::vector<uint8_t> value;
-        for (size_t i=0; i < paramBytewidth; i++) {
-            value.push_back(*actionData++);
-        }
+        const char *actionData = data;
+        data += Bitfield2Vector(data, bitwidth, value);
 
         // Add to parameter list
         params.push_back(::np4::Parameter(paramName, value));
+
+        Logger::get()->debug("add action parameter {}, bit width {}, data {},"
+            " vector {}", paramName, bitwidth,
+            StringData(actionData, (data - actionData)),
+            StringValues(value));
     }
 
     try {
@@ -463,10 +600,10 @@ size_t CalcTableDataSize(const pi_p4info_t *info,
 // @param[in]   params      The parameters of the action
 // @return      Function returns the incremented data pointer
 //
-char *CopyActionData(const pi_p4info_t *info,
-                     char *data,
-                     pi_p4_id_t actionId,
-                     const ::np4::Action& action) {
+size_t CopyActionData(const pi_p4info_t *info,
+                      char *data,
+                      pi_p4_id_t actionId,
+                      const ::np4::Action& action) {
 
     char *start = data;
 
@@ -485,37 +622,26 @@ char *CopyActionData(const pi_p4info_t *info,
         if (it == pmap.end()) {
             Logger::get()->error("CopyActionData can't find param for id {}",
                                  id);
-            return nullptr;
+            return 0;
         }
         const ::np4::Parameter& param = it->second;
 
         // Calc widths of param
         size_t bitwidth =
             pi_p4info_action_param_bitwidth(info, actionId, id);
-        size_t bytewidth = (bitwidth + 7) / 8;
 
-        // Check for bytewidth smaller than what we're about
-        // to copy in from the API call
-        if (bytewidth < param.value.size()) {
-            Logger::get()->error(
-                "CopyActionData bytewidth {} smaller than param value size {}",
-                bytewidth, param.value.size());
-            return nullptr;
-        }
 
-        size_t offset = bytewidth - param.value.size();
-        memset(data, 0, offset);
-        for (auto byte : param.value) {
-            data[offset++] = byte;
-        }
-        data += bytewidth;
-        Logger::get()->debug("CopyActionParam {} size {}", 
-            param.name, bytewidth);
+        const char *valueData = data;
+        data += Vector2Bitfield(param.value, data, bitwidth);
+        Logger::get()->debug("CopyActionParam {} bit width {}, data {}, "
+            "vector {}", param.name, bitwidth,
+            StringData(valueData, (data - valueData)),
+            StringValues(param.value));
     }
     Logger::get()->debug("CopyActionData {} data size {}",
         action.name, (data - start));
 
-    return data;
+    return (data - start);
 }
 
 // @brief Copy in the key data to the given data pointer
@@ -524,7 +650,7 @@ char *CopyActionData(const pi_p4info_t *info,
 // @param[in]   key         The key we need to copy
 // @return      Function returns the incremented data pointer
 //
-char *CopyKeyData(const pi_p4info_t *info, char *data,
+size_t CopyKeyData(const pi_p4info_t *info, char *data,
                   const pi_p4_id_t table_id, const ::np4::Key& key) {
 
     char* start = data;
@@ -545,28 +671,23 @@ char *CopyKeyData(const pi_p4info_t *info, char *data,
         if (it == kmap.end()) {
             Logger::get()->error("CopyKeyData can't find key with id {}",
                                  id);
-            return nullptr;
+            return 0;
         }
         const ::np4::KeyElem* keyElem = it->second;
+        size_t bitwidth = pi_p4info_table_match_field_bitwidth(
+            info, table_id, id);
 
-        size_t keyDataSize = 0;
         switch (keyElem->type) {
-        case ::np4::info::MatchEngineType::Ternary: {
-            auto keyElemTernary = 
-                reinterpret_cast<const ::np4::KeyElemTernary*>(keyElem);
-
-            keyDataSize += keyElemTernary->value.size() +
-                                 keyElemTernary->mask.size();
+        case ::np4::info::MatchEngineType::Exact: {
 
             // copy in the value
-            for (auto byte : keyElemTernary->value) {
-                *data++ = byte;
-            }
+            char *valueData = data;
+            data += Vector2Bitfield(keyElem->value, data, bitwidth);
 
-            // copy in the mask
-            for (auto byte : keyElemTernary->mask) {
-                *data++ = byte;
-            }
+            Logger::get()->debug("copying Exact key {} bit width {}, "
+                "value_data {}, value_vector {}", keyElem->name, bitwidth, 
+                StringData(valueData, (data - valueData)),
+                StringValues(keyElem->value));
             break;
         }
 
@@ -574,40 +695,50 @@ char *CopyKeyData(const pi_p4info_t *info, char *data,
             auto keyElemLPM = 
                 reinterpret_cast<const ::np4::KeyElemLPM *>(keyElem);
 
-            keyDataSize = keyElemLPM->value.size() + sizeof(uint32_t);
-
             // copy in the value
-            for (auto byte : keyElemLPM->value) {
-                *data++ = byte;
-            }
+            const char *valueData = data;
+            data += Vector2Bitfield(keyElemLPM->value, data, bitwidth);
 
             // copy in the prefix length
-            data += emit_uint32(data, keyElemLPM->prefixLength);
+            data += emit_uint32((char *)data, keyElemLPM->prefixLength);
+
+            Logger::get()->debug("copying LPM key {} bit width {}, "
+                "value_data {}, value_vector {}, prefix len {}",
+                keyElem->name, bitwidth, 
+                StringData(valueData, (data - valueData)),
+                StringValues(keyElem->value), keyElemLPM->prefixLength);
             break;
         }
 
-        case ::np4::info::MatchEngineType::Exact: {
+        case ::np4::info::MatchEngineType::Ternary: {
+            auto keyElemTernary = 
+                reinterpret_cast<const ::np4::KeyElemTernary*>(keyElem);
 
-            keyDataSize = keyElem->value.size();
+            // copy in the value & mask
+            const char *valueData = data;
+            data += Vector2Bitfield(keyElemTernary->value, data, bitwidth);
+            const char *maskData = data;
+            data += Vector2Bitfield(keyElemTernary->mask, data, bitwidth);
 
-            // copy in the value
-            for (auto byte : keyElem->value) {
-                *data++ = byte;
-            }
+            Logger::get()->debug("copying Ternary key {} bit width {}, "
+                "value_data {}, value_vector {}, mask_data {}, "
+                "mask_value {}", keyElem->name, bitwidth, 
+                StringData(valueData, (maskData - valueData)),
+                StringValues(keyElem->value), 
+                StringData(maskData, (data - maskData)), 
+                StringValues(keyElemTernary->mask)); 
             break;
         }
 
         default:
             Logger::get()->error("Key type {} not handled",
                                  std::to_string(keyElem->type));
-            return nullptr;
+            return 0;
         }
-        Logger::get()->debug("CopyKeyData keyElem {} size {}", 
-                             keyElem->name, keyDataSize);
     }
     Logger::get()->debug("CopyKeyData data size {}", (data - start));
 
-    return data;
+    return (data - start);
 }
 
 // @brief Copy in the rule to the given data pointer
@@ -620,7 +751,7 @@ char *CopyKeyData(const pi_p4info_t *info, char *data,
 // @param[in]   rule        The rule we need to copy
 // @return      Function returns the incremented data pointer
 //
-char *CopyRuleData(const pi_p4info_t *info,
+size_t CopyRuleData(const pi_p4info_t *info,
                    pi_p4_id_t table_id,
                    ::np4::Table& table,
                    char *data,
@@ -639,7 +770,7 @@ char *CopyRuleData(const pi_p4info_t *info,
     } catch (::np4::Exception &e) {
         Logger::get()->debug("rule fetch failed on index {}: {}",
                                  ruleIndex, e.what());
-        return data;
+        return 0;
     }
 
     // Entry rule number
@@ -650,11 +781,7 @@ char *CopyRuleData(const pi_p4info_t *info,
     data += emit_uint32(data, 0); // priority
 
     // Copy the key data
-    data = CopyKeyData(info, data, table_id, rule.key);
-    if (data == nullptr) {
-        Logger::get()->error("CopyRuleData failed to copy key data");
-        return nullptr;
-    }
+    data += CopyKeyData(info, data, table_id, rule.key);
 
     // Our actions are always direct
     data += emit_action_entry_type(data, PI_ACTION_ENTRY_TYPE_DATA);
@@ -662,18 +789,13 @@ char *CopyRuleData(const pi_p4info_t *info,
 
     data += emit_p4_id(data, actionProperties.id);
     data += emit_uint32(data, actionProperties.size);
-    data = CopyActionData(info, data, actionProperties.id, rule.action);
-    if (data == nullptr) {
-        Logger::get()->error("CopyRuleData failed to copy action data");
-        return nullptr;
-    }
-
+    data += CopyActionData(info, data, actionProperties.id, rule.action);
     data += emit_uint32(data, 0);  // properties
     data += emit_uint32(data, 0);  // TODO(antonin): direct resources
 
     Logger::get()->debug("CopyRuleData data size {}", (data - start));
 
-    return data;
+    return (data - start);
 }
 
 //---------------- Tables class ---------------------------
@@ -953,12 +1075,8 @@ pi_status_t Tables::DefaultActionGet(pi_dev_id_t dev_id,
 
     table_entry->entry.action_data = actionData;
 
-    data = CopyActionData(info, data, actionId, action);
-    if (data == nullptr) {
-        Logger::get()->error("CopyRuleData failed to copy action data");
-        delete[] data;
-        return PI_STATUS_ALLOC_ERROR;
-    }
+    data += CopyActionData(info, data, actionId, action);
+
     // Check we haven't overrun our data buffer
     assert(end >= data);
     Logger::get()->debug("DefaultActionGet data size {}", (data - start));
@@ -1320,19 +1438,15 @@ pi_status_t Tables::EntryFetch(pi_dev_id_t dev_id,
     for (size_t ruleIndex = 0; ruleIndex < maxRuleIndex; ruleIndex++) {
 
         // Copy in the rule data
-        char *tmp = CopyRuleData(info, table_id, table, data,
-                                 ruleIndex, actionMap);
-        if (tmp == nullptr) {
-            Logger::get()->error("Dev {}: failed to copy rule data",
-                                 dev_id);
-            return PI_STATUS_TARGET_ERROR;
+        size_t rule_sz = CopyRuleData(info, table_id, table, data,
+                                      ruleIndex, actionMap);
 
         // zero increase means rule get failed, which is ok because
         // it's a sparse table.
-        } else if (tmp != data) {
+        if (rule_sz != 0) {
 
             // increment data ptr
-            data = tmp;
+            data += rule_sz;
 
             // Have we got enough
             if (++got == tableSize) break;
@@ -1402,33 +1516,28 @@ pi_status_t Tables::EntryFetchOne(pi_dev_id_t dev_id,
         Logger::get()->error("Dev {}: alloc of fetch space failed", dev_id);
         return PI_STATUS_ALLOC_ERROR;
     }
-    char *start = data;
-    char *end = data + dataSize;
 
     // in some cases, we do not use the whole buffer
     std::fill(data, data + dataSize, 0);
     res->entries_size = dataSize;
     res->entries = data;
 
-    char *tmp = CopyRuleData(info, table_id, table, data, ruleIndex, actionMap);
-    if (tmp == nullptr) {
-        Logger::get()->error("Dev {}: failed to copy rule data",
-                             dev_id);
-        return PI_STATUS_TARGET_ERROR;
-
-    // Else get of this index failed
-    } else if (tmp == data) {
+    // Copy in the rule data
+    size_t rule_sz = CopyRuleData(info, table_id, table, data,
+                                  ruleIndex, actionMap);
+    // get of this rule index failed
+    if (rule_sz == 0) {
         Logger::get()->error("Dev {}: failed to get rule {}",
                              dev_id, ruleIndex);
         return PI_STATUS_OUT_OF_BOUND_IDX;
     }
-    data = tmp;
+    data += rule_sz;
 
     Logger::get()->debug("EntryFetchOne data used/alloc {}/{}",
-                         (data - start), (end - start));
+                         rule_sz, dataSize);
 
     // Just make sure we didn't go over the end of the allocated data
-    assert(end >= data);
+    assert(rule_sz < dataSize);
 
     return PI_STATUS_SUCCESS;
 }
@@ -1496,8 +1605,6 @@ pi_status_t Tables::EntryFetchWKey(pi_dev_id_t dev_id,
         Logger::get()->error("Dev {}: alloc of fetch space failed", dev_id);
         return PI_STATUS_ALLOC_ERROR;
     }
-    char *start = data;
-    char *end = data + dataSize;
 
     // in some cases, we do not use the whole buffer
     std::fill(data, data + dataSize, 0);
@@ -1505,25 +1612,21 @@ pi_status_t Tables::EntryFetchWKey(pi_dev_id_t dev_id,
     res->entries = data;
 
     // Copy in the rule data
-    char *tmp = CopyRuleData(info, table_id, table, data, ruleIndex, actionMap);
-    if (tmp == nullptr) {
-        Logger::get()->error("Dev {}: failed to copy rule data",
-                             dev_id);
-        return PI_STATUS_TARGET_ERROR;
-
-    // Else get on this index failed
-    } else if (tmp == data) {
+    size_t rule_sz = CopyRuleData(info, table_id, table, data, 
+                                  ruleIndex, actionMap);
+    // get on this index failed
+    if (rule_sz == 0) {
         Logger::get()->error("Dev {}: failed to get rule {}",
                              dev_id, ruleIndex);
         return PI_STATUS_OUT_OF_BOUND_IDX;
     }
-    data = tmp;
+    data += rule_sz;
 
     Logger::get()->debug("EntryFetchWKey data used/alloc {}/{}",
-                         (data - start), (end - start));
+                         rule_sz, dataSize);
 
     // Just make sure we didn't go over the end of the allocated data
-    assert(end >= data);
+    assert(rule_sz < dataSize);
 
     return PI_STATUS_SUCCESS;
 }
