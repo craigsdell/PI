@@ -157,7 +157,12 @@ ParamMap CreateParamMap(const pi_p4info_t* info,
     for (const ::np4::Parameter& param : parameters) {
         size_t id = pi_p4info_action_param_id_from_name(info, actionId,
                                                         param.name.c_str());
-        pmap.emplace(id, param);
+        if (id == PI_INVALID_ID) {
+            Logger::get()->error("invalid param name {} for action id {}",
+                                 param.name, actionId);
+        } else {
+            pmap.emplace(id, param);
+        }
     }
     return pmap;
 }
@@ -182,7 +187,12 @@ KeyMap CreateKeyMap(const pi_p4info_t* info,
     for (const ::np4::KeyElem* keyElem : key) {
         size_t id = pi_p4info_table_match_field_id_from_name(info, table_id,
                                                         keyElem->name.c_str());
-        kmap[id] = keyElem;
+        if (id == PI_INVALID_ID) {
+            Logger::get()->error("invalid match field name {} for table id {}",
+                                 keyElem->name, table_id);
+        } else {
+            kmap[id] = keyElem;
+        }
     }
     return kmap;
 }
@@ -934,13 +944,18 @@ pi_status_t Tables::DefaultActionSet(pi_dev_id_t dev_id,
 
         // Do we write to all ATOMs
         if (dev->syncAtoms()) {
+            Logger::get()->debug("set default action for  {}: sync {} atoms",
+                                 tableName,
+                                 dev->GetP4Device()->getAtomCount());
             for (size_t i=0; i < dev->GetP4Device()->getAtomCount(); i++) {
+                Logger::get()->debug("set default action for atom {}", i);
                 ::np4::Table& table = dev->GetP4Atom(i).getTable(tableName);
                 table.setDefaultAction(action);
             }
 
         // Or just one ATOM
         } else {
+            Logger::get()->debug("set default action for {}", tableName);
             ::np4::Table& table = dev->GetP4Atom().getTable(tableName);
             table.setDefaultAction(action);
         }
@@ -986,13 +1001,18 @@ pi_status_t Tables::DefaultActionReset(pi_dev_id_t dev_id,
 
         // Do we write to all ATOMs
         if (dev->syncAtoms()) {
+            Logger::get()->debug("clear default action for  {}: sync {} atoms",
+                                 tableName,
+                                 dev->GetP4Device()->getAtomCount());
             for (size_t i=0; i < dev->GetP4Device()->getAtomCount(); i++) {
+                Logger::get()->debug("clear default action for atom {}", i);
                 ::np4::Table& table = dev->GetP4Atom(i).getTable(tableName);
                 table.clearDefaultAction();
             }
 
         // Or just one ATOM
         } else {
+            Logger::get()->debug("clear default action for {}", tableName);
             ::np4::Table& table = dev->GetP4Atom().getTable(tableName);
             table.clearDefaultAction();
         }
@@ -1053,6 +1073,12 @@ pi_status_t Tables::DefaultActionGet(pi_dev_id_t dev_id,
     // Allocate space for the action data
     const pi_p4_id_t actionId = 
         pi_p4info_action_id_from_name(info, action.name.c_str());
+    if (actionId == PI_INVALID_ID) {
+        Logger::get()->error("Dev {}: invalid action name {} for {}",
+                             dev_id, tableName, action.name);
+        return PI_STATUS_INVALID_ENTRY_PROPERTY;
+    }
+
     const size_t actionDataSize = pi_p4info_action_data_size(info, actionId);
 
     table_entry->entry_type = PI_ACTION_ENTRY_TYPE_DATA;
@@ -1167,13 +1193,19 @@ pi_status_t Tables::EntryDelete(pi_dev_id_t dev_id,
 
         // Do we delete rule in all ATOMs
         if (dev->syncAtoms()) {
+            Logger::get()->debug("delete rule for {}[{}]: sync {} atoms",
+                                 tableName, ruleIndex,
+                                 dev->GetP4Device()->getAtomCount());
             for (size_t i=0; i < dev->GetP4Device()->getAtomCount(); i++) {
+                Logger::get()->debug("delete rule for atom {}", i);
                 ::np4::Table& table = dev->GetP4Atom(i).getTable(tableName);
                 table.deleteRule(ruleIndex);
             }
 
         // Or just one ATOM
         } else {
+            Logger::get()->debug("delete rule for {}[{}]", 
+                                 tableName, ruleIndex);
             ::np4::Table& table = dev->GetP4Atom().getTable(tableName);
             table.deleteRule(ruleIndex);
         }
@@ -1283,13 +1315,19 @@ pi_status_t Tables::EntryModify(pi_dev_id_t dev_id,
 
         // Do we write to all ATOMs
         if (dev->syncAtoms()) {
+            Logger::get()->debug("modify rule for {}[{}]: sync {} atoms",
+                                 tableName, ruleIndex,
+                                 dev->GetP4Device()->getAtomCount());
             for (size_t i=0; i < dev->GetP4Device()->getAtomCount(); i++) {
+                Logger::get()->debug("modify rule for atom {}", i);
                 ::np4::Table& table = dev->GetP4Atom(i).getTable(tableName);
                 table.modifyRule(ruleIndex, action);
             }
 
         // Or just one ATOM
         } else {
+            Logger::get()->debug("modify rule for {}[{}]",
+                                 tableName, ruleIndex);
             ::np4::Table& table = dev->GetP4Atom().getTable(tableName);
             table.modifyRule(ruleIndex, action);
         }
