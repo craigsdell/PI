@@ -4,8 +4,7 @@ AM_CPPFLAGS += \
 -I$(top_srcdir)/../../ \
 -I$(top_srcdir)/../../proto/third_party \
 -I$(top_srcdir)/../../proto/cpp_out \
--I$(NP4_INSTALL)/include/dpdk \
--I$(NP4_INSTALL)/include/ \
+-I$(RTE_SDK)/$(RTE_TARGET)/include \
 -I/usr/include/x86_64-linux-gnu \
 -I/usr/include/x86_64-linux-gnu/c++/7 \
 -m32 -mssse3

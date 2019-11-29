@@ -217,11 +217,6 @@ cc_library(
     deps = [
         "//:pihdrs",
         "@local_np4_bin//:dpdk_hdrs",
-        #"@local_np4_bin//:dpdk_mbuf",
-        #"@local_np4_bin//:dpdk_eal",
-        #"@local_np4_bin//:dpdk_ethdev",
-        #"@local_np4_bin//:dpdk_mempool",
-        #"@local_np4_bin//:dpdk_kvargs",
         "@com_github_p4lang_p4runtime//:p4runtime_cc_grpc",
         "@com_google_googleapis//google/rpc:code_cc_proto",
         "//proto:p4_device_config_cc_proto",
