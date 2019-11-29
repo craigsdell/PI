@@ -34,7 +34,7 @@ cc_library(
         "-m64",
         "-pthread",
         "-march=native",
-        "-mno-avx512f",
+        #"-mno-avx512f",
         "-DRTE_MACHINE_CPUFLAG_SSE",
         "-DRTE_MACHINE_CPUFLAG_SSE2",
         "-DRTE_MACHINE_CPUFLAG_SSE3",
@@ -49,6 +49,8 @@ cc_library(
         "-DRTE_MACHINE_CPUFLAG_FSGSBASE",
         "-DRTE_MACHINE_CPUFLAG_F16C",
         "-DRTE_MACHINE_CPUFLAG_AVX2",
+        "-D_GNU_SOURCE",
+        "-DALLOW_EXPERIMENTAL_API",
         # Warnings
         #"-W",
         #"-Wall",

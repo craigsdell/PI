@@ -228,9 +228,7 @@ pi_status_t _pi_table_entries_fetch_done(pi_session_handle_t session_handle,
 	(void)(session_handle);
 	Logger::get()->trace("PI_table_entries_fetch_done");
 	
-	delete[] res->entries;
-
-	return PI_STATUS_SUCCESS;
+    return pi::np4::Tables::EntryFetchDone(res);
 }
 
 pi_status_t _pi_table_idle_timeout_config_set(

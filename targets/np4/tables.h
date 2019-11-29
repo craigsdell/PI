@@ -184,6 +184,13 @@ class Tables {
                                       const pi_match_key_t *match_key,
                                       pi_table_fetch_res_t *res);
 
+    // @brief Fetch is done, so free up memory
+    //
+    // @param[out]  res           The table rules to be freed
+    // @return      Function returns a PI status code
+    //
+    static pi_status_t EntryFetchDone(pi_table_fetch_res_t *res);
+
     // Tables is neither copyable or movable
     Tables(const Tables&) = delete;
     Tables& operator=(const Tables&) = delete;

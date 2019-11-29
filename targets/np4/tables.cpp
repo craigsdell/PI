@@ -1398,6 +1398,10 @@ pi_status_t Tables::EntryFetch(pi_dev_id_t dev_id,
                                pi_p4_id_t table_id,
                                pi_table_fetch_res_t *res) {
 
+    // Need to init these now
+    res->entries_size = 0;
+    res->entries = nullptr;
+
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
@@ -1510,6 +1514,10 @@ pi_status_t Tables::EntryFetchOne(pi_dev_id_t dev_id,
                                   size_t ruleIndex,
                                   pi_table_fetch_res_t *res) {
 
+    // Need to init these now
+    res->entries_size = 0;
+    res->entries = nullptr;
+
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
     if (dev == nullptr) {
@@ -1584,6 +1592,10 @@ pi_status_t Tables::EntryFetchWKey(pi_dev_id_t dev_id,
                                    pi_p4_id_t table_id,
                                    const pi_match_key_t *match_key,
                                    pi_table_fetch_res_t *res) {
+
+    // Need to init these now
+    res->entries_size = 0;
+    res->entries = nullptr;
 
     // Check to make sure this device id is allocated
     auto dev =  DeviceMgr::GetDevice(dev_id);
@@ -1665,6 +1677,14 @@ pi_status_t Tables::EntryFetchWKey(pi_dev_id_t dev_id,
 
     // Just make sure we didn't go over the end of the allocated data
     assert(rule_sz < dataSize);
+
+    return PI_STATUS_SUCCESS;
+}
+
+pi_status_t Tables::EntryFetchDone(pi_table_fetch_res_t *res) {
+
+    // If we've allocated data free it up
+    if (res->entries_size > 0 && res->entries) delete[] res->entries;
 
     return PI_STATUS_SUCCESS;
 }
