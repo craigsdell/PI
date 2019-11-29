@@ -7,7 +7,7 @@ def _impl(repository_ctx):
         repository_ctx.file("BUILD", """
 """)
         return
-    dpdk_path = repository_ctx.os.environ["RTE_SDK"] + "x86_64-native-linux-gcc"
+    dpdk_path = repository_ctx.os.environ["RTE_SDK"] + "/x86_64-native-linux-gcc"
     repository_ctx.symlink(dpdk_path, "dpdk-bin")
     repository_ctx.file("BUILD", """
 
