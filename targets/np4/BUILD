@@ -74,7 +74,7 @@ cc_library(
     linkstatic=True,
     linkopts = [
         "-m64", "-pthread",
-        "-L /home/craigsid/np4_install/share/dpdk/x86_64-native-linux-gcc/lib", 
+        "-L /usr/local/share/dpdk/x86_64-native-linux-gcc/lib", 
         "-Wl,-lrte_flow_classify", 
         "-Wl,--whole-archive", 
         "-Wl,-lrte_pipeline", 
