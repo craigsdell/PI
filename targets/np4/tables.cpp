@@ -452,7 +452,7 @@ size_t CalcKeyDataSize(::np4::Key& key) {
     size_t dataSize = 0;
     for (auto keyElem : key) {
         switch (keyElem->type) {
-        case ::np4::info::MatchEngineType::Ternary: {
+        case ::np4::info::KeyElemType::Ternary: {
             ::np4::KeyElemTernary* keyElemTernary = 
                 reinterpret_cast<::np4::KeyElemTernary*>(keyElem);
             dataSize += keyElemTernary->value.size();
@@ -460,13 +460,13 @@ size_t CalcKeyDataSize(::np4::Key& key) {
             break;
         }
 
-        case ::np4::info::MatchEngineType::LPM: {
+        case ::np4::info::KeyElemType::LPM: {
             auto keyElemLPM = reinterpret_cast<::np4::KeyElemLPM *>(keyElem);
             dataSize += keyElemLPM->value.size() + sizeof(uint32_t);
             break;
         }
 
-        case ::np4::info::MatchEngineType::Exact: {
+        case ::np4::info::KeyElemType::Exact: {
             dataSize += keyElem->value.size();
             break;
         }
@@ -688,7 +688,7 @@ size_t CopyKeyData(const pi_p4info_t *info, char *data,
             info, table_id, id);
 
         switch (keyElem->type) {
-        case ::np4::info::MatchEngineType::Exact: {
+        case ::np4::info::KeyElemType::Exact: {
 
             // copy in the value
             char *valueData = data;
@@ -701,7 +701,7 @@ size_t CopyKeyData(const pi_p4info_t *info, char *data,
             break;
         }
 
-        case ::np4::info::MatchEngineType::LPM: {
+        case ::np4::info::KeyElemType::LPM: {
             auto keyElemLPM = 
                 reinterpret_cast<const ::np4::KeyElemLPM *>(keyElem);
 
@@ -720,7 +720,7 @@ size_t CopyKeyData(const pi_p4info_t *info, char *data,
             break;
         }
 
-        case ::np4::info::MatchEngineType::Ternary: {
+        case ::np4::info::KeyElemType::Ternary: {
             auto keyElemTernary = 
                 reinterpret_cast<const ::np4::KeyElemTernary*>(keyElem);
 
