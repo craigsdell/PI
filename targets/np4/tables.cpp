@@ -22,6 +22,7 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <string>
 
 using pi::fe::proto::Logger;
 
@@ -471,9 +472,9 @@ size_t CalcKeyDataSize(::np4::Key& key) {
             break;
         }
 
-        default:
-            Logger::get()->error("Key type {} not handled",
-                                 std::to_string(keyElem->type));
+        case ::np4::info::KeyElemType::Unknown:
+            Logger::get()->error("Key type Unknown not handled");
+            break;
         }
     }
 
@@ -740,9 +741,8 @@ size_t CopyKeyData(const pi_p4info_t *info, char *data,
             break;
         }
 
-        default:
-            Logger::get()->error("Key type {} not handled",
-                                 std::to_string(keyElem->type));
+        case ::np4::info::KeyElemType::Unknown:
+            Logger::get()->error("Key type Unknown not handled");
             return 0;
         }
     }
