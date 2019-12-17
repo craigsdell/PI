@@ -4,10 +4,27 @@ AM_CPPFLAGS += \
 -I$(top_srcdir)/../../ \
 -I$(top_srcdir)/../../proto/third_party \
 -I$(top_srcdir)/../../proto/cpp_out \
+-I$(top_srcdir)/../../proto/frontend \
 -I$(RTE_SDK)/$(RTE_TARGET)/include \
 -I/usr/include/x86_64-linux-gnu \
 -I/usr/include/x86_64-linux-gnu/c++/7 \
--m32 -mssse3
+-m64 -pthread -march=native  \
+-DRTE_MACHINE_CPUFLAG_SSE \
+-DRTE_MACHINE_CPUFLAG_SSE2 \
+-DRTE_MACHINE_CPUFLAG_SSE3 \
+-DRTE_MACHINE_CPUFLAG_SSSE3 \
+-DRTE_MACHINE_CPUFLAG_SSE4_1 \
+-DRTE_MACHINE_CPUFLAG_SSE4_2 \
+-DRTE_MACHINE_CPUFLAG_AES \
+-DRTE_MACHINE_CPUFLAG_PCLMULQDQ \
+-DRTE_MACHINE_CPUFLAG_AVX \
+-DRTE_MACHINE_CPUFLAG_RDRAND \
+-DRTE_MACHINE_CPUFLAG_RDSEED \
+-DRTE_MACHINE_CPUFLAG_FSGSBASE \
+-DRTE_MACHINE_CPUFLAG_F16C \
+-DRTE_MACHINE_CPUFLAG_AVX2 \
+-D_GNU_SOURCE \
+-DALLOW_EXPERIMENTAL_API
 
 libpi_np4_la_SOURCES = \
 pi_imp.cpp \
