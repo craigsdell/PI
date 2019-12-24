@@ -876,7 +876,8 @@ pi_status_t Tables::EntryAdd(pi_dev_id_t dev_id, pi_p4_id_t table_id,
                 } else {
                     // If we're out of sync we'll just report it for now
                     if (idx != ruleIndex) {
-                        Logger::get()->error("ATOM rule indexes out of sync");
+                        Logger::get()->error("Dev {}: {} ATOM rule indexes out"
+                                             " of sync", dev_id, tableName);
                     }
                 }
             }
@@ -889,8 +890,8 @@ pi_status_t Tables::EntryAdd(pi_dev_id_t dev_id, pi_p4_id_t table_id,
         }
 
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: insert rule failed: {}",
-                             dev_id, e.what());
+        Logger::get()->error("Dev {}: {} insert rule failed: {}",
+                             dev_id, tableName, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -961,8 +962,8 @@ pi_status_t Tables::DefaultActionSet(pi_dev_id_t dev_id,
         }
 
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: set default action failed: {}",
-                             dev_id, e.what());
+        Logger::get()->error("Dev {}: {} set default action failed: {}",
+                             dev_id, tableName, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -1018,8 +1019,8 @@ pi_status_t Tables::DefaultActionReset(pi_dev_id_t dev_id,
         }
 
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: clear default action failed: {}",
-                             dev_id, e.what());
+        Logger::get()->error("Dev {}: {} clear default action failed: {}",
+                             dev_id, tableName, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -1065,8 +1066,8 @@ pi_status_t Tables::DefaultActionGet(pi_dev_id_t dev_id,
         action = table.getDefaultAction();
 
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: get default action failed: {}",
-                             dev_id, e.what());
+        Logger::get()->error("Dev {}: {} get default action failed: {}",
+                             dev_id, tableName, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -1074,7 +1075,7 @@ pi_status_t Tables::DefaultActionGet(pi_dev_id_t dev_id,
     const pi_p4_id_t actionId = 
         pi_p4info_action_id_from_name(info, action.name.c_str());
     if (actionId == PI_INVALID_ID) {
-        Logger::get()->error("Dev {}: invalid action name {} for {}",
+        Logger::get()->error("Dev {}: {} invalid action name {}",
                              dev_id, tableName, action.name);
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
@@ -1085,7 +1086,7 @@ pi_status_t Tables::DefaultActionGet(pi_dev_id_t dev_id,
 
     char *data = new char[sizeof(pi_action_data_t) + actionDataSize];
     if (data == NULL) {
-        Logger::get()->error("Deve {}: defatul action data alloc failed",
+        Logger::get()->error("Dev {}: default action data alloc failed",
                              dev_id);
         return PI_STATUS_ALLOC_ERROR;
     }
@@ -1146,7 +1147,7 @@ pi_status_t Tables::DefaultActionGetHandle(pi_dev_id_t dev_id,
         ruleIndex = table.getCapacity();
 
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: Table {}: get capacity failed: {}",
+        Logger::get()->error("Dev {}: {} get capacity failed: {}",
                              dev_id, tableName, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
@@ -1211,8 +1212,8 @@ pi_status_t Tables::EntryDelete(pi_dev_id_t dev_id,
         }
 
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: delete rule {} failed: {}",
-                             dev_id, ruleIndex, e.what());
+        Logger::get()->error("Dev {}: {} delete rule {} failed: {}",
+                             dev_id, tableName, ruleIndex, e.what());
         return PI_STATUS_INVALID_ENTRY_PROPERTY;
     }
 
@@ -1263,7 +1264,8 @@ pi_status_t Tables::EntryDeleteWKey(pi_dev_id_t dev_id,
 
     // Couldn't find entry
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: can't find rule: {}", dev_id, e.what());
+        Logger::get()->error("Dev {}: {} can't find rule: {}",
+                             dev_id, tableName, e.what());
         return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_KEY_NAME_ERROR);
     }
 
@@ -1333,8 +1335,8 @@ pi_status_t Tables::EntryModify(pi_dev_id_t dev_id,
         }
 
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: modify rule failed: {}",
-                             dev_id, e.what());
+        Logger::get()->error("Dev {}: {} modify rule failed: {}",
+                             dev_id, tableName, e.what());
         return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_ERROR);
     }
 
@@ -1386,8 +1388,8 @@ pi_status_t Tables::EntryModifyWKey(pi_dev_id_t dev_id,
 
     // Couldn't find entry
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: can't find rule: {}",
-                             dev_id, e.what());
+        Logger::get()->error("Dev {}: {} can't find rule: {}",
+                             dev_id, tableName, e.what());
         return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_KEY_NAME_ERROR);
     }
 
@@ -1436,7 +1438,7 @@ pi_status_t Tables::EntryFetch(pi_dev_id_t dev_id,
 
     // Couldn't find entry
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: can't get table {}: {}",
+        Logger::get()->error("Dev {}: {} can't get table: {}",
                              dev_id, tableName, e.what());
         return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_KEY_NAME_ERROR);
     }
@@ -1552,14 +1554,16 @@ pi_status_t Tables::EntryFetchOne(pi_dev_id_t dev_id,
     size_t dataSize = CalcTableDataSize(info, table_id, table, ruleIndex,
                                         actionMap, res);
     if (dataSize == 0) {
-        Logger::get()->error("Dev {}: Calc of rule size failed", dev_id);
+        Logger::get()->error("Dev {}: {} calc of rule size failed",
+                             dev_id, tableName);
         return PI_STATUS_ALLOC_ERROR;
     }
 
     // Now allocate the space
     char *data = new char[dataSize];
     if (data == NULL) {
-        Logger::get()->error("Dev {}: alloc of fetch space failed", dev_id);
+        Logger::get()->error("Dev {}: {} alloc of fetch space failed",
+                             dev_id, tableName);
         return PI_STATUS_ALLOC_ERROR;
     }
 
@@ -1639,8 +1643,8 @@ pi_status_t Tables::EntryFetchWKey(pi_dev_id_t dev_id,
 
     // Table is sparsely populated so should be ok
     } catch (::np4::Exception &e) {
-        Logger::get()->error("Dev {}: rule fetch failed on key: {}",
-                              dev_id, e.what());
+        Logger::get()->error("Dev {}: {} rule fetch failed on key: {}",
+                              dev_id, tableName, e.what());
         return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_KEY_NAME_ERROR);
     }
 
@@ -1652,7 +1656,8 @@ pi_status_t Tables::EntryFetchWKey(pi_dev_id_t dev_id,
     // Now allocate the space
     char *data = new char[dataSize];
     if (data == NULL) {
-        Logger::get()->error("Dev {}: alloc of fetch space failed", dev_id);
+        Logger::get()->error("Dev {}: {} alloc of fetch space failed",
+                             dev_id, tableName);
         return PI_STATUS_ALLOC_ERROR;
     }
 
