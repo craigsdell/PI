@@ -373,8 +373,8 @@ pi_status_t DPDKDevice::PacketOut(const char* pkt, size_t size) {
     rte_memcpy(rte_pktmbuf_mtod(m, void *), &pktout_hdr_, offset);
     // copy packet into mbuf
     rte_memcpy(rte_pktmbuf_mtod_offset(m, void *, offset), pkt, size);
-    m->pkt_len = size;
-    m->data_len = size;
+    m->pkt_len = size+sizeof(rte_ether_hdr);
+    m->data_len = size+sizeof(rte_ether_hdr);
 
     // Now send mbuf
     // Note: we'll just use queue 0 for now
