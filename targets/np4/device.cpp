@@ -148,7 +148,12 @@ pi_status_t Device::Reset() {
     // Reset all atoms
     for (std::size_t i=0; i < p4_dev_->getAtomCount(); i++) {
         Logger::get()->debug("Dev {}: resetting atom {}", dev_id_, i);
-        (*p4_dev_)[i].reset();
+        try {
+            (*p4_dev_)[i].reset();
+        } catch (::np4::Exception &e) {
+            Logger::get()->error("Dev {} Atom {}: reset failed: {}",
+                dev_id_, i, e.what());
+        }
     }
 
     return PI_STATUS_SUCCESS;
