@@ -22,6 +22,9 @@
 #include <vector>
 #include <np4atom.hpp>
 
+// Netcope SDK doesn't support priorites so set a default
+#define DEFAULT_PRIORITY 10
+
 namespace pi {
 namespace np4 {
 

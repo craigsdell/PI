@@ -658,6 +658,7 @@ size_t CopyActionData(const pi_p4info_t *info,
 // @brief Copy in the key data to the given data pointer
 //
 // @param[in]   data        pointer to the destination space
+// @param[in]   table_id    The table id
 // @param[in]   key         The key we need to copy
 // @return      Function returns the incremented data pointer
 //
@@ -751,6 +752,49 @@ size_t CopyKeyData(const pi_p4info_t *info, char *data,
     return (data - start);
 }
 
+// @brief Determine if priority is required
+//
+// @param[in]   info        P4 Info
+// @param[in]   table_id    The table id
+// @param[in]   key         The key we need to copy
+// @return      Function returns true or false
+//
+bool NeedsPriority(const pi_p4info_t *info,
+                   const pi_p4_id_t table_id,
+                   const ::np4::Key& key) {
+
+    size_t keyCount;
+    const pi_p4_id_t *keyIds =
+        pi_p4info_table_get_match_fields(info, table_id, &keyCount);
+
+    // Spin thru all the keys
+    for (size_t i=0; i < keyCount; i++) {
+
+        // Grab key info
+        auto mf_id = keyIds[i];
+        auto kinfo = pi_p4info_table_match_field_info(info, table_id, i);
+        assert(mf_id == kinfo->mf_id);
+
+        switch (kinfo->match_type) {
+
+        // Don't need priority for these match types
+        case PI_P4INFO_MATCH_TYPE_EXACT:
+        case PI_P4INFO_MATCH_TYPE_END:
+        case PI_P4INFO_MATCH_TYPE_VALID:
+            break;
+
+        // Need priority for these match types
+        case PI_P4INFO_MATCH_TYPE_LPM:
+        case PI_P4INFO_MATCH_TYPE_TERNARY:
+        case PI_P4INFO_MATCH_TYPE_RANGE:
+            return(true);
+        }
+    }
+
+    // Didn't find any keys that need a priority
+    return(false);
+}
+
 // @brief Copy in the rule to the given data pointer
 //
 // @param[in]   info        P4 Info
@@ -787,8 +831,13 @@ size_t CopyRuleData(const pi_p4info_t *info,
     pi_entry_handle_t handle(ruleIndex);
     data += emit_entry_handle(data, handle);
 
-    // We don't have priority yet
-    data += emit_uint32(data, 0); // priority
+    // We don't have priority support in Netcope SDK yet so if
+    // needed we'll just set the default that was used on insert
+    if (NeedsPriority(info, table_id, rule.key)) {
+        data += emit_uint32(data, DEFAULT_PRIORITY);
+    } else {
+        data += emit_uint32(data, 0);
+    }
 
     // Copy the key data
     data += CopyKeyData(info, data, table_id, rule.key);
