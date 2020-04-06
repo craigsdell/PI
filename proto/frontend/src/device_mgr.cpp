@@ -1127,7 +1127,7 @@ class DeviceMgrImp {
 
       bool _init{false};
       const SessionTemp &session;
-      pi_table_entry_t entry;
+      pi_table_entry_t entry{PI_ACTION_ENTRY_TYPE_NONE, nullptr};
     };
 
     if (requested_entry.has_time_since_last_hit()) {
@@ -1138,6 +1138,9 @@ class DeviceMgrImp {
     }
 
     PIDefaultEntry entry(session);
+    // init pi_table_entry_t entry
+    //memset(&(entry.entry), 0, sizeof(entry.entry));
+
     RETURN_IF_ERROR(entry.get(device_tgt, table_id));
 
     auto *table_entry = response->add_entities()->mutable_table_entry();
