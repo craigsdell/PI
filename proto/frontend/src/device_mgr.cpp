@@ -1138,8 +1138,6 @@ class DeviceMgrImp {
     }
 
     PIDefaultEntry entry(session);
-    // init pi_table_entry_t entry
-    //memset(&(entry.entry), 0, sizeof(entry.entry));
 
     RETURN_IF_ERROR(entry.get(device_tgt, table_id));
 

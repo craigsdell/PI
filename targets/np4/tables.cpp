@@ -223,10 +223,33 @@ pi_status_t AddKey(const pi_p4info_t *info, pi_p4_id_t table_id,
                                                      fieldInfo->mf_id);
 
         switch (fieldInfo->match_type) {
-        case PI_P4INFO_MATCH_TYPE_VALID:
-            Logger::get()->error("error VALID match type not implemented: {}",
-                               keyName);
-            return pi_status_t(PI_STATUS_TARGET_ERROR + P4DEV_NOT_IMPLEMENTED);
+        case PI_P4INFO_MATCH_TYPE_VALID: {
+            // Create value vector
+            std::vector<uint8_t> keyValue;
+            const char *keyData = data;
+            data += Bitfield2Vector(data, fieldInfo->bitwidth, keyValue);
+
+            try {
+                // Create new key
+                key.push_back(new ::np4::KeyElemValid(keyName, keyValue));
+                Logger::get()->debug(
+                    "adding Valid key {}, width {}, data {}, vector {}",
+                    keyName, fieldInfo->bitwidth,
+                    StringData(keyData, (data - keyData)),
+                    StringValues(keyValue));
+
+            } catch (::np4::Exception &e) {
+                Logger::get()->error(
+                    "error creating valid key {}, width {}, data {},"
+                    " vector {}: {}",
+                    keyName, fieldInfo->bitwidth,
+                    StringData(keyData, (data - keyData)),
+                    StringValues(keyValue), e.what());
+                return pi_status_t(PI_STATUS_TARGET_ERROR + 
+                                   P4DEV_KEY_NAME_ERROR);
+            }
+            break;
+        }
 
         case PI_P4INFO_MATCH_TYPE_EXACT: {
             // Create value vector
@@ -472,6 +495,11 @@ size_t CalcKeyDataSize(::np4::Key& key) {
             break;
         }
 
+        case ::np4::info::KeyElemType::Valid: {
+            dataSize += keyElem->value.size();
+            break;
+        }
+
         case ::np4::info::KeyElemType::Unknown:
             Logger::get()->error("Key type Unknown not handled");
             break;
@@ -690,6 +718,19 @@ size_t CopyKeyData(const pi_p4info_t *info, char *data,
             info, table_id, id);
 
         switch (keyElem->type) {
+        case ::np4::info::KeyElemType::Valid: {
+
+            // copy in the value
+            char *valueData = data;
+            data += Vector2Bitfield(keyElem->value, data, bitwidth);
+
+            Logger::get()->debug("copying Valid key {} bit width {}, "
+                "value_data {}, value_vector {}", keyElem->name, bitwidth, 
+                StringData(valueData, (data - valueData)),
+                StringValues(keyElem->value));
+            break;
+        }
+
         case ::np4::info::KeyElemType::Exact: {
 
             // copy in the value
